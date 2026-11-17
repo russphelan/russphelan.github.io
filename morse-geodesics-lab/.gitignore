@@ -1,0 +1,3 @@
+# The site's macOS Icon? rule also matches this folder on case-insensitive disks.
+!icons/
+!icons/*

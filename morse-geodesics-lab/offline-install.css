@@ -1,0 +1,13 @@
+.offline-install{margin-top:12px;border:1px solid var(--line,#cfdbd3);border-radius:10px;background:var(--paper,#fffdf6);font-size:12px;color:var(--muted,#526970)}
+.offline-install>summary{padding:10px 12px;cursor:pointer;color:var(--ink,#17343d);font-weight:600}
+.offline-install [data-offline="badge"]{margin-left:10px;font-size:11px;font-weight:400;color:var(--teal-dark,#0a797a)}
+.offline-install-body{padding:0 14px 14px;max-width:780px;line-height:1.6}
+.offline-install-body p{margin:8px 0}.offline-install-body ol{padding-left:20px;margin:10px 0}
+.offline-install-actions{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.offline-install-actions button{font:inherit;border:1px solid #bfd0c8;border-radius:7px;min-height:36px;padding:6px 12px;cursor:pointer;color:#17343d;background:#fffdf6}
+.offline-install-actions button:first-child{background:#0b7e7f;color:white;border-color:#0b7e7f}
+.offline-install-actions button:disabled{opacity:.55;cursor:default}
+.offline-install progress{width:100%;height:12px;accent-color:#0b7e7f}
+.offline-install [hidden]{display:none!important}
+.offline-install[data-ready="true"] [data-offline="badge"]{font-weight:600;color:#237963}
+@media(max-width:550px){.offline-install>summary{font-size:11px}.offline-install [data-offline="badge"]{display:block;margin:3px 0 0 14px}.offline-install-body{font-size:11px}}

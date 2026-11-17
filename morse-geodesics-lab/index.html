@@ -4,6 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f6f3ec">
+  <meta name="offline-release" content="53f216d28e2e119d164a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Geodesics">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png">
   <meta name="description" content="Compute and explore fixed-endpoint geodesics on surfaces inside simply connected four-manifolds, with a Morse-index cutoff.">
   <title>Geodesics · hidden dimensions</title>
   <link rel="stylesheet" href="./styles.css?v=index-reveal-hint-1">
@@ -12,6 +18,8 @@
   <link rel="stylesheet" href="./energy-landscape.css?v=radius-axis-1">
   <link rel="stylesheet" href="./view-resize.css?v=push-framing-1">
   <link rel="stylesheet" href="./neck-explanation.css?v=neck-linked-views-2">
+  <link rel="stylesheet" href="./offline-install.css?v=offline-1">
+  <script defer src="./offline-install.js?v=offline-1"></script>
   <script defer src="./compact-collar.js?v=surface-traversal-1"></script>
   <script defer src="./surface.js?v=surface-traversal-1"></script>
   <script defer src="./solver.js?v=compact-collar-3"></script>
@@ -277,6 +285,25 @@
       </div>
     </details>
     <footer class="page-footer"><span>Geodesics · hidden dimensions</span><span>Computed trajectories · selected subset</span></footer>
+    <details id="offline-install" class="offline-install">
+      <summary>Install &amp; use offline <span data-offline="badge" role="status">Checking…</span></summary>
+      <div class="offline-install-body">
+        <p data-offline="status" role="status">Open this page online once to save it for offline use.</p>
+        <progress data-offline="progress" value="0" max="1" aria-label="Offline download progress" hidden></progress>
+        <div class="offline-install-actions">
+          <button type="button" data-offline="prepare" disabled>Save for offline use</button>
+          <button type="button" data-offline="check" disabled>Check offline copy</button>
+          <button type="button" data-offline="apply" hidden>Restart with saved update</button>
+          <button type="button" data-offline="install" hidden>Install app</button>
+        </div>
+        <ol>
+          <li>Save the app here while connected. Wait for <strong>Ready offline</strong>.</li>
+          <li>On iPad, open Safari’s <strong>Share</strong> menu and choose <strong>Add to Home Screen</strong>. Turn on <strong>Open as Web App</strong> if offered.</li>
+          <li>Open the new Home Screen app while still connected. If needed, save it there too. Confirm <strong>Ready offline</strong>, then test a fresh launch in airplane mode.</li>
+        </ol>
+        <p>The download includes all three surfaces, both endpoint presets, the presentation examples, and the numerical search. Calculations run on your device. Updates are downloaded separately; restart only when you are ready to switch versions.</p>
+      </div>
+    </details>
     <div id="live-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>
     <noscript><p class="noscript-note">Enable JavaScript to run the geodesic experiment. The explanation above remains available.</p></noscript>
   </main>

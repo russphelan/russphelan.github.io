@@ -26,6 +26,37 @@ python3 -m http.server 4174 --directory morse-geodesics-lab
 Open <http://localhost:4174>. The page loads the local geometry, solver, computed
 catalogue, and app scripts.
 
+## Offline installation on iPad
+
+Open the public HTTPS app and expand **Install & use offline** at the bottom.
+Choose **Save for offline use**, keep the page open, and wait for **Ready offline**.
+The approximately 47 MB download includes every runtime file, both background
+workers, and all six full geodesic catalogues. It does not alter numerical data
+or require a server for computation.
+
+In Safari, use **Share → Add to Home Screen** and enable **Open as Web App** if
+offered. Open the new Home Screen app while connected and verify **Ready offline**
+there; save again there if Safari provides separate storage. Test a fresh launch
+in airplane mode before presenting. Clearing website data also clears the offline
+copy; **Check offline copy** checks that every required cached file is present.
+
+Updates download to a separate release. The active saved version remains usable
+until **Restart with saved update** is selected. Other open app windows retain
+their complete version. No update automatically reloads a presentation.
+
+After changing any runtime file, regenerate the offline release before publishing:
+
+```sh
+node morse-geodesics-lab/prepare-offline.cjs
+node morse-geodesics-lab/prepare-offline.cjs --check
+```
+
+The generator computes content hashes, embeds the release in the page and worker,
+and emits the complete asset list. Failed or mismatched downloads cannot become
+ready. `prepare-icons.cjs` reproducibly generates the editable SVG and PNG icons.
+Local `file:` launches retain their existing behavior; installation uses HTTPS
+or a localhost development server.
+
 ## Geometry and the chosen metric
 
 The one-, two-, and three-summand views use genus-one, genus-two, and genus-three
