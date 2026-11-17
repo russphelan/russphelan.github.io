@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Neck collar comparison · Geometry workbench</title>
+  <link rel="stylesheet" href="./style.css?v=4">
+  <script defer src="./reference-surface.js"></script>
+  <script defer src="../../camera.js"></script>
+  <script defer src="../../deformation-tube.js"></script>
+  <script defer src="../../variation-field.js"></script>
+  <script defer src="./smooth-profile.js?v=3"></script>
+  <script defer src="./height-profile.js?v=1"></script>
+  <script defer src="./torus-radius-fast.js?v=1"></script>
+  <script defer src="./geometry.js?v=4"></script>
+  <script defer src="./assembly.js?v=3"></script>
+  <script defer src="./diagnostics.js?v=4"></script>
+  <script defer src="./results.js?v=5"></script>
+  <script defer src="./viewer.js?v=7"></script>
+</head>
+<body>
+  <main>
+    <header class="page-heading">
+      <div><p class="eyebrow">Geometry workbench <span>Isolated prototype</span></p><h1>A gentler neck, within the torus height</h1><p class="intro">Compare three height-safe collars with the previous join. Both views share their camera and world scale.</p></div>
+      <a class="back-link" href="../../index.html">Open the main demonstration ↗</a>
+    </header>
+    <div class="status-strip"><span class="status-dot"></span><strong>Historical geometry comparison · compact collar selected for the main app.</strong><span>Every candidate stays within z = ±0.45 by construction. Colored paths are geometry probes, not geodesics.</span></div>
+
+    <section class="toolbar" aria-label="Comparison settings">
+      <label class="candidate-control">Compare with<select id="candidate" aria-label="Candidate collar"></select></label>
+      <label>Probe route<select id="probe-route" aria-label="Comparison probe route"><option value="0">Across the neck</option><option value="1">Quarter-turn ↻</option><option value="-1">Quarter-turn ↺</option></select></label>
+      <label>Section around the neck <output id="angle-value">−164°</output><input id="angle" type="range" min="-180" max="180" step="1" value="-164" aria-label="Probe section angle"></label>
+      <label>Comparison amplitude <output id="push-value">0.120</output><input id="push" type="range" min="0" max="120" step="1" value="120" aria-label="Test field amplitude"></label>
+      <label>Requested drawing gain <output id="gain-value">3.0×</output><input id="gain" type="range" min="10" max="60" step="1" value="30" aria-label="Requested drawing magnification"></label>
+      <label class="direction-control">Hidden direction<select id="direction" aria-label="Test hidden direction"><option value="1">1 · blue</option><option value="2">2 · violet</option></select></label>
+      <div class="toggles"><label><input id="safety" type="checkbox" checked> Apply neck safety limit</label><label><input id="heat" type="checkbox" checked> Curvature colors</label><label><input id="height-guides" type="checkbox" checked> Torus height guides</label></div>
+    </section>
+
+    <details class="assembly-controls" id="assembly-preview">
+      <summary>Preview collar assembly <span>Exact moving sections of the chosen geometry</span></summary>
+      <div><label for="assembly-progress">Join the collars <output id="assembly-value">50%</output><input id="assembly-progress" type="range" min="0" max="1000" step="1" value="500" aria-label="Collar assembly progress"></label><p>Gold rings follow the actual surfaces as the final collar is revealed from both ends. The field is paused in this preview. The full connected-sum animation will be rebuilt after choosing the geometry.</p></div>
+    </details>
+
+    <div class="comparison-actions"><p id="comparison-note">Preparing the comparison…</p><div><button id="whole-pair" type="button">Whole pair</button><button id="reset-view" type="button">Reset close-up</button></div></div>
+    <section class="view-grid" aria-label="Synchronized surface comparison">
+      <article class="surface-card" id="current-card">
+        <header><div><p class="card-eyebrow">Reference</p><h2>Previous neck</h2></div><span class="badge">Archived reference</span></header>
+        <div class="canvas-wrap"><canvas id="current-view" width="1000" height="700" tabindex="0" aria-label="Current neck, curvature and surface-following test field"></canvas><div class="view-overlay"><span id="current-scale">—</span><span class="field-key">Pale: probe · colored: displaced probe</span></div><p class="orbit-help">Drag either view to turn both · scroll to zoom</p></div>
+        <dl class="metrics"><div><dt>Largest sampled |κ|</dt><dd id="current-curvature">—</dd></div><div><dt>Max geometry |z|</dt><dd id="current-height">—</dd></div><div><dt>Applied gain</dt><dd id="current-gain">—</dd></div><div><dt>Displayed path</dt><dd id="current-regularity">—</dd></div></dl>
+      </article>
+      <article class="surface-card" id="candidate-card">
+        <header><div><p class="card-eyebrow">Candidate</p><h2 id="candidate-title">Broad · best field display</h2></div><span class="badge candidate-badge" id="candidate-smoothness">Prototype</span></header>
+        <div class="canvas-wrap"><canvas id="candidate-view" width="1000" height="700" tabindex="0" aria-label="Candidate neck, curvature and surface-following test field"></canvas><div class="view-overlay"><span id="candidate-scale">—</span><span class="field-key">Geometry stays inside the height guides</span></div><p class="orbit-help">Gold guides: original torus height ±0.45</p></div>
+        <dl class="metrics"><div><dt>Largest sampled |κ|</dt><dd id="candidate-curvature">—</dd></div><div><dt>Max geometry |z|</dt><dd id="candidate-height">—</dd></div><div><dt>Applied gain</dt><dd id="candidate-gain">—</dd></div><div><dt>Displayed path</dt><dd id="candidate-regularity">—</dd></div></dl>
+      </article>
+    </section>
+
+    <section class="evidence-row">
+      <article class="plot-card"><div class="plot-heading"><div><p class="card-eyebrow">Along the selected comparison route</p><h2>Where the surface turns sharply</h2></div><div class="trace-key"><span class="current-trace">Current</span><span class="candidate-trace">Candidate</span></div></div><canvas id="curvature-chart" width="1200" height="230" role="img" aria-label="Maximum absolute principal curvature along the normalized probe arclength"></canvas><p class="plot-note">Horizontal: normalized probe arclength s / L. Vertical: max(|κ₁|, |κ₂|), in inverse length units.</p></article>
+      <aside class="reading-card"><p class="card-eyebrow">How to read this comparison</p><div class="color-key"><span>Low curvature</span><span>10 or more</span></div><div class="color-ramp"></div><p>The same color scale is used in both views. The measured surface peak includes all sampled angles, not just the highlighted section.</p><p id="candidate-description"></p><p id="numerical-note" class="numerical-note">Surface peaks are sampled diagnostics, not certified global bounds.</p></aside>
+    </section>
+    <details class="method"><summary>What this prototype establishes</summary><div><p>Each highlighted path crosses its own surface, either at a fixed polar angle or with a quarter-turn around the neck. The test coefficient is f(s) = sin(πs / L), using that probe’s arclength. The two drawing directions follow the visible surface normal and its sideways tangent, as in the surface-following illustration. They are schematic representations of hidden coordinates.</p><p>These probes test normal rotation and display folding. They do not identify new endpoint-matched geodesics, Jacobi fields, conjugate points, or Morse indices. The displayed amplitude is a test coefficient; this workbench reports no path length comparison in the four-dimensional metric.</p><p>The candidates use smoothly rounded stadium-like cross-sections, blending at the same polar angle with bounded torus sections. Both ingredients have |z| ≤ 0.45, so their convex blend does too, without clipping. C∞ joins preserve the original round torus outside each collar. The height limit applies to the geometry; the illustrated variation field can leave the surface.</p><p>The search minimizes worst principal curvature first, then compares the field scale retained by the display limiter near that minimum. It is bounded to center spacing ≤ 5.5, horizontal half-width ≤ 1.2, and a smooth cap parameter ≥ 0.015. The recommended shape is within 0.01% of the smallest curvature found, with better field scale than the strict numerical winner. It is a best-found shape in this family, not a global optimum over all surfaces. The unchanged torus bodies already reach |κ| = 1/0.45 ≈ 2.22.</p><p>A production replacement still requires metric validation, new geodesics and Jacobi fields, and redesigned construction animations.</p></div></details>
+    <p id="error" class="error" role="alert" hidden></p>
+    <footer>Neck collar workbench · numerical geometry comparison · no changes to the main experiment</footer>
+  </main>
+</body>
+</html>

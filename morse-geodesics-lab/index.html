@@ -1,0 +1,284 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f6f3ec">
+  <meta name="description" content="Compute and explore fixed-endpoint geodesics on surfaces inside simply connected four-manifolds, with a Morse-index cutoff.">
+  <title>Geodesics · hidden dimensions</title>
+  <link rel="stylesheet" href="./styles.css?v=index-reveal-hint-1">
+  <link rel="stylesheet" href="./downhill-controls.css?v=stable-field-scale-1">
+  <link rel="stylesheet" href="./surface-mode-comparison.css?v=hessian-modes-2">
+  <link rel="stylesheet" href="./energy-landscape.css?v=radius-axis-1">
+  <link rel="stylesheet" href="./view-resize.css?v=push-framing-1">
+  <link rel="stylesheet" href="./neck-explanation.css?v=neck-linked-views-2">
+  <script defer src="./compact-collar.js?v=surface-traversal-1"></script>
+  <script defer src="./surface.js?v=surface-traversal-1"></script>
+  <script defer src="./solver.js?v=compact-collar-3"></script>
+  <script defer src="./jacobi-sampling.js"></script>
+  <script defer src="./jacobi.js"></script>
+  <script defer src="./jacobi-ribbon.js?v=ribbon-scale-1"></script>
+  <script defer src="./jacobi-ribbon-mesh.js?v=ribbon-scale-1"></script>
+  <script defer src="./jacobi-explanation.js?v=ribbon-cutaway-layout-1"></script>
+  <script defer src="./theorem.js"></script>
+  <script defer src="./view-modes.js"></script>
+  <script defer src="./camera.js?v=mouse-zoom-recovery-1"></script>
+  <script defer src="./ambient-explorer.js?v=stability-pass-1"></script>
+  <script defer src="./hidden-cutaway.js?v=live-hidden-1"></script>
+  <script defer src="./traversal-hold.js?v=traversal-focus-fix-1"></script>
+  <script defer src="./surgery.js?v=compact-collar-3"></script>
+  <script defer src="./surgery-preparation.js?v=compact-collar-3"></script>
+  <script defer src="./surgery-motion.js?v=compact-collar-3"></script>
+  <script defer src="./neck-explanation-math.js?v=compact-collar-3"></script>
+  <script defer src="./neck-explanation.js?v=compact-collar-3"></script>
+  <script defer src="./starter-data.js?v=compact-collar-3"></script>
+  <script defer src="./catalogue-loader.js?v=compact-collar-3"></script>
+  <script defer src="./search-store.js?v=automatic-search-1"></script>
+  <script defer src="./search-manager.js?v=compact-collar-3"></script>
+  <script defer src="./solver-worker-source.js?v=surface-traversal-1"></script>
+  <script defer src="./search-worker-factory.js?v=compact-collar-3"></script>
+  <script defer src="./surgery-worker-source.js?v=surface-traversal-1"></script>
+  <script defer src="./presentation-data.js?v=compact-collar-3"></script>
+  <script defer src="./presentation.js?v=presentation-1"></script>
+  <script defer src="./showcase-data.js?v=compact-collar-3"></script>
+  <script defer src="./showcase.js?v=jacobi-examples-1"></script>
+  <script defer src="./downhill.js?v=surface-deep-1"></script>
+  <script defer src="./downhill-preparation.js?v=surface-deep-1"></script>
+  <script defer src="./deformation-sampling.js?v=smooth-deformations-1"></script>
+  <script defer src="./deformation-tube.js?v=smooth-deformations-1"></script>
+  <script defer src="./variation-field.js?v=prominent-push-field-2"></script>
+  <script defer src="./hidden-push-display.js?v=live-hidden-1"></script>
+  <script defer src="./surface-push-display.js?v=live-hidden-1"></script>
+  <script defer src="./energy-landscape.js?v=hidden-push-directions-2"></script>
+  <script defer src="./surface-mode-comparison.js?v=maximum-push-1"></script>
+  <script defer src="./downhill-controls.js?v=maximum-push-1"></script>
+  <script defer src="./view-resize.js?v=stability-review-1"></script>
+  <script defer src="./neck-view-resize.js?v=neck-resize-5"></script>
+  <script defer src="./jacobi-graph-scale.js?v=graph-zoom-1"></script>
+  <script defer src="./surface-traversal.js?v=live-hidden-1"></script>
+  <script defer src="./app.js?v=surface-deep-1"></script>
+</head>
+<body>
+  <a class="skip-link" href="#experiment-controls">Skip to experiment controls</a>
+  <main class="page-shell">
+    <header class="page-header">
+      <div>
+        <p class="eyebrow"><span aria-hidden="true"></span> Theorem B / A geodesic experiment</p>
+        <h1>Geodesics <span>· hidden dimensions</span></h1>
+        <p class="intro">Computed fixed-endpoint curves on a totally geodesic surface.</p>
+      </div>
+      <div class="header-note"><span class="status-dot" aria-hidden="true"></span> Real trajectories<br><span>inside a four-manifold</span></div>
+    </header>
+
+    <div id="experiment-controls" class="experiment-bar" aria-label="Experiment controls">
+      <div class="topology-strip"><label for="experience-mode" class="sr-only">Experience mode</label><select id="experience-mode"><option value="explore">Explore</option><option value="presentation">Presentation</option><option value="showcase">Jacobi examples</option></select><h2 id="surface-heading">Summands</h2>
+          <div class="surface-choices" role="group" aria-label="Number of four-dimensional summands">
+            <button type="button" id="surface-torus" aria-pressed="true" aria-label="One summand" title="One S² × S² summand">1</button>
+            <button type="button" id="surface-double" aria-pressed="false" aria-label="Two summands" title="Two S² × S² summands">2</button>
+            <button type="button" id="surface-triple" aria-pressed="false" aria-label="Three summands" title="Three S² × S² summands">3</button>
+          </div>
+          <button type="button" id="add-handle" class="add-button" aria-label="Add a summand" title="Add a summand">Add</button>
+          <button type="button" id="neck-explanation-toggle" class="add-button neck-toggle" aria-expanded="false" aria-controls="neck-explanation">Inside the neck</button>
+      </div>
+        <div class="display-options">
+          <div class="scene-options" role="group" aria-label="Scene layers">
+            <label class="path-view-control" for="path-view"><span>Paths</span> <select id="path-view" aria-label="Geodesic view"><option value="all">All paths · full color</option><option value="focus">Highlight selected</option><option value="solo">Selected only</option></select></label>
+            <label><input type="checkbox" id="show-surface"> Surface</label>
+            <label><input type="checkbox" id="show-wire" checked> Surface grid</label>
+            <label><input type="checkbox" id="show-focusing" aria-label="Jacobi ribbon and conjugate markers" checked> Jacobi fields</label>
+            <label><input type="checkbox" id="dock-cutaway" aria-controls="hidden-neighborhood-details"> Cutaway beside torus</label>
+          </div>
+
+        </div>
+
+    </div>
+
+    <section id="presentation-bar" class="presentation-bar" aria-label="Growth presentation" hidden>
+      <div class="presentation-stages" aria-label="Computed examples in each stage"><span data-presentation-stage="1">1 summand · <b id="presentation-total-1">—</b></span><span aria-hidden="true">→</span><span data-presentation-stage="2">2 summands · <b id="presentation-total-2">—</b></span><span aria-hidden="true">→</span><span data-presentation-stage="3">3 summands · <b id="presentation-total-3">—</b></span></div>
+      <p>Same endpoints · index ≤ <output id="presentation-cutoff">—</output><span class="presentation-sample-note"> · Selected computed examples</span></p>
+      <div class="presentation-actions"><button type="button" id="reveal-play">Pause reveal</button><button type="button" id="reveal-replay">Replay stage</button><button type="button" id="reveal-all">Show all</button></div>
+    </section>
+
+    <section id="showcase-bar" class="showcase-bar" aria-label="Visually selected Jacobi examples" hidden>
+      <div class="showcase-choices"><strong>Jacobi examples</strong><button type="button" id="showcase-clear-pinch">Clear first pinch</button><button type="button" id="showcase-neck-return">Return from second torus</button></div>
+      <div class="showcase-stops" role="group" aria-label="Inspect the clearest conjugate points"><button type="button" id="showcase-start">Start excerpt</button><button type="button" id="showcase-hidden">Show +2 focus</button><button type="button" id="showcase-surface">Show +1 pinch</button><button type="button" id="showcase-return">Return</button></div>
+      <p id="showcase-help">Watch the hidden pair vanish at +2, then the surface ribbon pinch at +1.</p>
+    </section>
+
+    <div id="workspace" class="workspace">
+      <section id="observation-console" class="scene-column" aria-label="Geodesic visualization">
+        <div class="scene-panel">
+          <div class="scene-topline">
+            <div><p id="scene-kicker" class="section-kicker">The visible surface</p><h2 id="scene-title">Many ways from <i>x</i> to <i>y</i></h2></div>
+            <div id="scene-count" class="scene-count"><output id="visible-count">0</output><span>visible / <output id="total-count">0</output> found</span></div>
+          </div>
+          <div id="scene-stage" class="scene-stage">
+            <canvas id="scene" width="1120" height="760" tabindex="0" role="img" aria-label="Three-dimensional surface with computed geodesic arcs between the marked endpoints" aria-describedby="scene-caption camera-help">Canvas support is needed to view the geodesics.</canvas>
+            <span id="endpoint-x" class="endpoint-label endpoint-x" aria-hidden="true">x</span>
+            <span id="endpoint-y" class="endpoint-label endpoint-y" aria-hidden="true">y</span>
+            <span id="endpoint-original-y" class="endpoint-label endpoint-ghost" aria-hidden="true" hidden>y · full path</span>
+            <div id="conjugate-markers" class="conjugate-markers" aria-label="Conjugate points on the selected geodesic"></div>
+            <div id="ribbon-key" class="ribbon-key" hidden><span></span><span id="ribbon-field-status">Jₛ · surface field only</span></div>
+            <div id="scene-empty" class="scene-empty">Preparing the surface…</div>
+            <p id="presentation-caption" class="presentation-caption" role="status" aria-live="polite" hidden></p>
+            <p id="downhill-scene-note" class="downhill-scene-note" hidden></p>
+            <span id="neck-main-marker" class="neck-main-marker" hidden aria-hidden="true"></span>
+            <div class="scene-toolbar" role="group" aria-label="Camera controls">
+              <button type="button" id="rotate-left" title="Rotate left" aria-label="Rotate left">↶</button>
+              <button type="button" id="rotate-right" title="Rotate right" aria-label="Rotate right">↷</button>
+              <span class="toolbar-divider" aria-hidden="true"></span>
+              <button type="button" id="zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
+              <button type="button" id="zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+              <button type="button" id="reset-camera" class="reset-camera">Reset view</button>
+            </div>
+          <span id="surgery-controls-home" hidden></span>
+          <div id="surgery-controls" class="surgery-controls" hidden>
+            <div class="surgery-readout"><label for="surgery-progress">Cut · align · glue</label><output id="surgery-percent" for="surgery-progress">0%</output></div>
+            <input type="range" id="surgery-progress" min="0" max="1000" step="1" value="0" aria-label="Connected-sum animation progress" aria-describedby="surgery-stage">
+            <p id="surgery-stage" class="surgery-stage">Preparing the connected sum</p>
+            <div class="surgery-actions"><button type="button" id="surgery-pause" aria-pressed="true">Pause</button><button type="button" id="surgery-finish">Finish now</button><button type="button" id="surgery-cancel">Cancel</button></div>
+            <p id="surgery-motion-note" class="control-note" hidden>Reduced motion is on. Scrub through the stages or choose Finish now.</p>
+          </div>
+            <div class="scene-bottomline"><span id="camera-help">Drag to turn freely · scroll to zoom at pointer</span><span class="index-key"><i aria-hidden="true"></i> Color follows Morse index</span></div>
+          </div>
+
+        </div>
+
+        <aside id="neck-explanation" class="neck-companion-panel" aria-label="Inside the four-dimensional neck" hidden>
+          <button type="button" id="neck-explanation-close" class="neck-close" aria-label="Close the neck explanation">×</button>
+          <div id="neck-explanation-view"></div>
+        </aside>
+        <div id="neck-construction-controls" class="neck-construction-controls" hidden></div>
+
+        <section class="selection-panel" aria-labelledby="selected-name">
+          <div class="selected-summary">
+          <div class="selection-topline"><div><p class="section-kicker">Selected trajectory</p><h2 id="selected-name">Select a geodesic</h2></div><label class="study-path-picker" for="study-curve"><span class="sr-only">Choose a geodesic for both views</span><select id="study-curve"><option value="">Choose a geodesic</option></select></label><div class="selected-index"><span id="selected-index-label">Morse index</span><output id="selected-index">—</output></div></div>
+          <div class="trajectory-facts">
+            <div><span id="selected-length-label">Length</span><output id="selected-length">—</output></div>
+            <div><span>Surface index</span><output id="selected-intrinsic">—</output></div>
+            <div><span>Hidden directions</span><output id="selected-normal">—</output></div>
+          </div>
+          </div>
+          <div class="travel-label-row"><label for="travel">Traverse the geodesic</label><div class="travel-settings"><label class="pause-at-field"><input type="checkbox" id="pause-at-conjugate" checked> Pause at conjugate points</label><output id="travel-output" for="travel">35%</output></div></div>
+          <div class="playback-row"><button type="button" id="play" class="play-button">Play</button><div class="travel-track"><input type="range" id="travel" min="0" max="1" step="0.00001" value="0.35" aria-label="Position along the selected geodesic" aria-describedby="focus-status"><div id="conjugate-timeline" class="conjugate-timeline" aria-label="Inspect a conjugate point"></div></div><label class="speed-label" for="speed"><span class="sr-only">Playback speed</span><select id="speed"><option value="0.5">½×</option><option value="1" selected>1×</option><option value="2">2×</option></select></label></div>
+
+          <div class="focus-summary">
+          <div class="focus-readout"><div><span class="section-kicker">Index from events passed</span><div class="focus-total"><output id="focus-count">—</output><span>/ <output id="focus-index">—</output></span></div></div><div id="focus-tokens" class="focus-tokens" aria-label="Contributions to the Morse index"></div></div>
+          <p id="focus-status" class="focus-status" role="status" aria-live="polite">Select a path to watch its nearby launch directions refocus.</p>
+          </div>
+          <details id="ribbon-settings" class="ribbon-settings">
+            <summary>Ribbon scale <span id="ribbon-scale-summary">Field magnitude · 50% compression</span></summary>
+            <div class="ribbon-controls">
+              <label class="ribbon-mode-control" for="ribbon-mode">Width follows
+                <select id="ribbon-mode"><option value="amplitude">Field magnitude</option><option value="focus">Focusing aid</option></select>
+              </label>
+              <div class="ribbon-slider-control">
+                <div><label for="ribbon-width">Ribbon size</label><output id="ribbon-width-value" for="ribbon-width">0.16</output></div>
+                <input id="ribbon-width" type="range" min="4" max="30" value="16" step="1" aria-label="Maximum ribbon half-width" aria-describedby="ribbon-scaling-description">
+              </div>
+              <div class="ribbon-slider-control">
+                <div><label for="ribbon-compression">Compression</label><output id="ribbon-compression-value" for="ribbon-compression">50%</output></div>
+                <input id="ribbon-compression" type="range" min="0" max="80" value="50" step="1" aria-describedby="ribbon-scaling-description">
+                <div class="ribbon-range-labels" aria-hidden="true"><span>Proportional</span><span>Boost small widths</span></div>
+              </div>
+              <div class="ribbon-scale-actions"><button id="ribbon-proportional" type="button">Proportional</button><button id="ribbon-reset" type="button">Reset</button></div>
+            </div>
+            <p id="ribbon-scaling-description">Field magnitude uses one fixed scale along the whole path. At 0% compression, width is proportional to |Jₛ|; increasing compression reveals smaller separations.</p>
+            <p id="ribbon-scaling-formula" class="ribbon-scaling-formula">Select a path to inspect its width scale.</p>
+          </details>
+          <div id="downhill-controls"></div>
+        </section>
+
+        <aside class="study-column" aria-label="Geodesic picker">
+        <section class="control-panel catalog-panel" aria-labelledby="catalog-heading">
+          <div class="catalog-heading-row"><h2 id="catalog-heading">Geodesics</h2><label for="sort-curves"><span class="sr-only">Sort geodesics</span><select id="sort-curves"><option value="length">By length</option><option value="index">By index</option></select></label></div>
+          <div class="index-panel"><h3 id="index-heading" class="sr-only">Maximum Morse index</h3>
+          <div class="index-readout"><label id="index-cutoff-label" for="index-cutoff">Morse index ≤</label><output id="index-value" for="index-cutoff">0</output></div>
+          <input type="range" id="index-cutoff" min="0" max="18" step="1" value="0" aria-describedby="index-reveal-hint index-help">
+          <p id="index-reveal-hint" class="index-reveal-hint" data-visible="true">Increase slider to reveal paths →</p>
+          <div class="range-endpoints" aria-hidden="true"><span>0</span><span id="index-max">18</span></div>
+          </div>
+          <div class="picker-guarantee" aria-live="polite"><div><span id="picker-bound-label">Theorem B · guaranteed through this index</span><strong id="picker-bound">—</strong></div><p id="picker-bound-scope">Guaranteed at this index alone.</p></div>
+          <div id="curve-list" class="curve-list" role="group" aria-label="Choose a computed geodesic"><p class="catalog-empty">Found curves will appear here.</p></div>
+        </section>
+        </aside>
+
+        <details class="jacobi-graphs">
+          <summary>Jacobi field graphs &amp; explanation</summary>
+          <div class="jacobi-graph-scales" aria-label="Vertical graph zoom">
+            <div class="jacobi-graph-scale surface-graph-scale"><div><label for="graph-zoom-surface">Surface · Jₛ</label><output id="graph-zoom-surface-value" for="graph-zoom-surface">1×</output></div><input type="range" id="graph-zoom-surface" min="-1" max="6" step="0.05" value="0" aria-label="Surface Jacobi graph vertical zoom" aria-describedby="graph-zoom-help"><span id="graph-range-surface">Select a path to see its scale.</span></div>
+            <div class="jacobi-graph-scale hidden-one-graph-scale"><div><label for="graph-zoom-hidden-one">Hidden 1 · J₁</label><output id="graph-zoom-hidden-one-value" for="graph-zoom-hidden-one">1×</output></div><input type="range" id="graph-zoom-hidden-one" min="-1" max="6" step="0.05" value="0" aria-label="Hidden one Jacobi graph vertical zoom" aria-describedby="graph-zoom-help"><span id="graph-range-hidden-one">Select a path to see its scale.</span></div>
+            <div class="jacobi-graph-scale hidden-two-graph-scale"><div><label for="graph-zoom-hidden-two">Hidden 2 · J₂</label><output id="graph-zoom-hidden-two-value" for="graph-zoom-hidden-two">1×</output></div><input type="range" id="graph-zoom-hidden-two" min="-1" max="6" step="0.05" value="0" aria-label="Hidden two Jacobi graph vertical zoom" aria-describedby="graph-zoom-help"><span id="graph-range-hidden-two">Select a path to see its scale.</span></div>
+            <button id="graph-zoom-fit" type="button">Fit all fields</button>
+          </div>
+          <p id="graph-zoom-help" class="graph-zoom-help">Each slider magnifies one graph vertically on a linear scale. Dashed guides mark the listed ± references. Zoom in to reveal smaller features; larger peaks are clipped within that field’s row. Zero locations and the traversal position stay fixed.</p>
+          <canvas id="jacobi" width="540" height="240" role="img" aria-label="Three separate Jacobi fields along the selected geodesic" aria-describedby="jacobi-caption">The selected curve's index is listed above.</canvas>
+          <div class="mode-legend"><span class="surface-mode">Surface · +1</span><span class="hidden-mode">Hidden pair · +2</span></div>
+          <p id="jacobi-caption">The cursor follows the travel control. A field reaching zero marks refocusing in that direction.</p>
+          <div id="field-event-explanation" class="field-event-explanation"><h3 id="field-event-title">Spread out, then refocus</h3><p id="field-event-remaining">Use the travel slider to watch nearby paths separate and come back into focus.</p></div>
+          <p id="field-event-why"></p>
+          <p>The surface ribbon shows Jₛ. Open the hidden-neighborhood cutaway beside the surface to see J₁ and J₂ spreading out and returning to the centerline at a +2 event.</p>
+          <p id="scene-caption" class="scene-caption">The visible surface sits totally geodesically inside a simply connected four-manifold with the chosen metric.</p>
+          <p class="ribbon-display-note">Ribbon scale controls its size and compression. Field magnitude preserves relative growth along the whole path; 0% compression makes width proportional to |Jₛ|. Focusing aid uses local magnification to emphasize zeros. Very small nonzero widths can become invisible at a faithful scale. Graph zoom is controlled above.</p>
+          <p id="focus-explanation" class="focus-explanation">Each independent Jacobi field that becomes zero again contributes one after you pass that conjugate point. A field can return to zero at several points; each event contributes separately. Select a + badge to see which entire fields vanish.</p>
+        </details>
+      </section>
+
+
+    </div>
+
+    <div id="cutaway-home">
+    <details id="hidden-neighborhood-details" class="hidden-neighborhood-details">
+      <summary>Reveal the hidden neighborhood <span>Two off-surface Jacobi fields · linked traversal</span><button id="cutaway-layout-toggle" type="button" aria-controls="observation-console">Beside torus</button></summary>
+      <div id="hidden-cutaway"></div>
+    </details>
+    </div>
+
+    <details id="ambient-details" class="ambient-details">
+      <summary>Where is the rest of the space? <span>Two spheres · extra directions · shrinking loops</span></summary>
+      <div id="ambient-explorer"></div>
+    </details>
+
+    <details class="advanced-controls">
+      <summary>More controls &amp; theory</summary>
+      <div class="controls-column">
+        <section class="control-panel endpoint-panel"><h2>Endpoints</h2>
+          <label class="field-label" for="endpoint-preset">Endpoints</label>
+          <select id="endpoint-preset" class="full-select"><option value="default">Across the surface</option><option value="alternate">Offset endpoints</option><option value="presentation" hidden>Fixed in the original torus</option></select>
+          <div class="surface-opacity-row">
+            <label for="surface-opacity">Surface opacity</label>
+            <input type="range" id="surface-opacity" min="10" max="100" step="5" value="55" aria-describedby="surface-opacity-help">
+            <output id="surface-opacity-value" for="surface-opacity">55%</output>
+            <span id="surface-opacity-help" class="sr-only">Lower opacity reveals geodesics behind the surface. At 100 percent the surface is opaque.</span>
+          </div>
+        </section>
+        <section class="control-panel search-panel" aria-labelledby="search-heading">
+          <div class="panel-heading-row"><h2 id="search-heading">Find more paths</h2><span class="panel-number" aria-hidden="true">03</span></div>
+          <div class="search-actions"><button type="button" id="search-more" class="primary-button">Search for more geodesics</button><button type="button" id="cancel-search" class="secondary-button" disabled>Stop</button></div>
+          <progress id="search-progress" max="100" value="0" aria-label="Geodesic search progress"></progress>
+          <p id="search-status" class="search-status" role="status" aria-live="polite">Preparing the initial search.</p>
+          <div class="search-quality-row"><label for="search-quality">Further search depth</label><select id="search-quality"><option value="extended">Extended</option><option value="standard">Standard</option></select></div>
+          <p class="control-note search-limit">The search is numerical and does not find every geodesic.</p>
+        </section>
+        <section class="control-panel theory-panel"><h2>Index &amp; Theorem B</h2>
+          <p id="index-help" class="control-note">Zero keeps the surface clear. Raise the slider to reveal found paths with Morse index at most its value, including index-zero paths. Index counts independent downhill modes: deformations that shorten the path with endpoints fixed. Select a path to inspect its focusing events.</p>
+          <div class="theory-card"><p id="theory-bound-label" class="theory-label">Theorem B · guaranteed at this index</p><output id="theory-bound">—</output><p id="theory-note">The theorem concerns all geodesics. This experiment computes a selected collection.</p></div>
+        </section>
+      </div>
+    </details>
+
+    <details id="solver-details" class="technical-details">
+      <summary><span>Behind the experiment</span><span class="details-plus" aria-hidden="true">+</span></summary>
+      <div class="details-grid">
+        <div><h3>Actual geodesics, in a chosen metric</h3><p>With k = 1, 2, or 3 summands, the visible surface has genus k and sits inside #ᵏ(S² × S²). Each torus has major radius 1.35 and tube radius 0.45; the joining collars are 2.10 wide and 0.90 high, staying within the original torus height. Smooth local collars preserve the round torus geometry away from the joins. We choose an ambient metric that makes this surface totally geodesic. Its induced metric from three-dimensional space determines the displayed trajectories.</p></div>
+        <div><h3>The hidden directions contribute</h3><p>In a small normal tube we choose g = dy₁² + dy₂² + cos²(√c |y|) h, with c = 0.36 and h the surface metric. The ambient index is the surface index plus 2⌊L√c / π⌋, away from conjugate endpoint lengths. The normal bundle is trivial for these nullhomologous surfaces.</p></div>
+        <div><h3>What the numerical checks establish</h3><p>The joined surfaces start with a catalogue computed for this geometry. Selecting a curve rechecks its path, Jacobi field and derivative, and conjugate times on progressively finer grids. Display samples retain extra detail where curvature changes quickly. New search results use these convergence checks too. Curves near conjugate endpoint cases are excluded from the index-filtered display. The numerical catalogue is a selected collection, not an exhaustive count.</p><p class="residual-line">Selected endpoint residual: <output id="selected-residual">—</output></p><p id="solver-diagnostics" class="residual-line"></p></div>
+        <div><h3>How to read the theorem</h3><p>For S² × S² summands, Theorem B has d = 2 and r = 2. For N ≥ 1, its bound is dim H<sub>N</sub>(ΩX; ℚ) ≥ 2<sup>N+1</sup> with two summands, and ≥ 6 · 4<sup>N−1</sup> with three. Morse inequalities force at least that many index-N critical geodesics under the usual nondegeneracy assumptions. The computed subset need not contain every geodesic required by the theorem, and its count is not an exact Betti number.</p></div>
+      </div>
+    </details>
+    <footer class="page-footer"><span>Geodesics · hidden dimensions</span><span>Computed trajectories · selected subset</span></footer>
+    <div id="live-status" class="sr-only" aria-live="polite" aria-atomic="true"></div>
+    <noscript><p class="noscript-note">Enable JavaScript to run the geodesic experiment. The explanation above remains available.</p></noscript>
+  </main>
+</body>
+</html>

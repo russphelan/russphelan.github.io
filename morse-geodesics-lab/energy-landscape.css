@@ -1,0 +1,25 @@
+.energy-landscape{min-width:0;width:100%;font-size:10px;white-space:normal}
+.energy-landscape-heading{display:flex;justify-content:space-between;align-items:baseline;gap:8px;line-height:1.4;color:#667a6a;font-size:9px}
+.energy-landscape-heading strong{font-size:11px;color:#55715f;font-weight:650}
+.energy-landscape-heading .energy-state-higher{color:#b45c38}.energy-landscape-heading .energy-state-lower{color:#247d69}.energy-landscape-heading .energy-state-unresolved{color:#827487}
+.energy-landscape-plot{display:block;width:100%;height:112px;overflow:visible}
+.energy-landscape-plot text{font-family:system-ui,sans-serif;fill:#788675;font-size:9px}
+.energy-landscape-plot .energy-zero-label{font-size:10px;font-weight:600;fill:#506a56}
+.energy-landscape-legend{display:flex;align-items:center;justify-content:center;gap:16px;line-height:1.3;font-size:8px;color:#8b9588}
+.energy-landscape-legend span{display:inline-flex;align-items:center;gap:4px}.energy-landscape-legend i{display:inline-block;width:12px;height:2px;background:var(--energy-color);opacity:.4}.energy-landscape-legend .is-active{font-weight:700;color:#3a5a43}.energy-landscape-legend .is-active i{height:3px;opacity:1}
+.energy-landscape-caption{font-size:8px;color:#7d8b77;text-align:center;line-height:1.3;margin:3px 0 0}
+.length-axis-label{font-size:9px;color:#506a56;text-align:center;line-height:1.4;margin:0 0 3px}
+@media(max-width:700px){.energy-landscape-plot{height:110px}.energy-landscape-heading{font-size:8px}.energy-landscape-heading strong{font-size:10px}.energy-landscape-legend{gap:10px}}
+/* Fit controls belong to this optional study, and remain outside the SVG so
+   keyboard focus survives a new push or a chart redraw. */
+.energy-landscape-plot{height:132px;overflow:hidden}
+.energy-landscape-plot .length-unresolved-label{font-size:10px;fill:#7e6d8a;font-weight:600}
+.length-scale-controls{display:grid;grid-template-columns:auto minmax(75px,1fr) minmax(75px,1fr);gap:8px;align-items:center;margin-top:4px}
+.length-fit-buttons{display:flex;gap:4px;flex-wrap:wrap}
+.length-fit-buttons button{font-size:8px;padding:3px 5px;min-height:24px;white-space:nowrap}
+.length-fit-buttons button[aria-pressed=true]{background:#e3edde;border-color:#98b295;color:#315b40}
+.length-scale-controls label{display:block;min-width:0;font-size:8px;line-height:1.3;color:#617960}
+.length-scale-controls output{float:right;font-size:8px;color:#345a42}
+.length-scale-controls input[type=range]{height:15px;margin:0;width:100%}
+@media(max-width:700px){.energy-landscape-plot{height:132px}.length-scale-controls{gap:6px;grid-template-columns:auto minmax(65px,1fr) minmax(65px,1fr)}}
+@media(max-width:380px){.length-scale-controls{grid-template-columns:1fr 1fr}.length-fit-buttons{grid-column:1/-1}}

@@ -1,0 +1,42 @@
+/* These rules follow the ordinary responsive layout. Custom sizes are opt-in:
+   Reset sizes removes them and restores the current mode's automatic layout. */
+.view-resize-ready .scene-column{position:relative}
+.view-resize-surface-pane,.view-resize-hidden-pane{position:relative}
+.view-resize-surface-pane,.view-resize-hidden-pane{--view-height-handle:24px}
+.view-resize-handle{position:absolute;z-index:12;touch-action:none;user-select:none;border:0;border-radius:3px;font-size:9px;line-height:1;padding:0;box-shadow:none}
+.view-resize-handle:focus-visible{outline:2px solid #17a5a4;outline-offset:0}
+.view-resize-surface,.view-resize-hidden{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 var(--view-height-handle);height:var(--view-height-handle);min-height:var(--view-height-handle);width:100%;cursor:ns-resize;color:#d7efe7;background:#143e4c;border-top:1px solid #4f7f83;border-radius:0;font-size:10px;font-weight:550;letter-spacing:.02em;white-space:nowrap}
+.view-resize-hidden{color:#315a46;background:#e5eddf;border-top-color:#b7cbb6}
+.view-resize-surface:hover:not(:disabled){background:#245765;color:#f0fff7}
+.view-resize-hidden:hover:not(:disabled){background:#d5e4ce;color:#224c35}
+.view-resize-surface:focus-visible,.view-resize-hidden:focus-visible{outline-offset:-3px}
+.view-resize-hidden-pane:not([open])>.view-resize-hidden{display:none}
+#cutaway-home>.view-resize-hidden-pane>.view-resize-hidden{margin:0 -12px;width:calc(100% + 24px);border-radius:0 0 7px 7px}
+.workspace.cutaway-study .view-resize-hidden-pane>.view-resize-hidden{position:absolute;left:0;right:0;bottom:0;width:100%}
+.workspace.cutaway-study .view-resize-hidden-pane .hidden-cutaway{bottom:var(--view-height-handle)}
+.view-resize-width{left:var(--seam-left);top:var(--seam-top);height:var(--seam-height);width:12px;transform:translateX(-50%);cursor:col-resize;background:transparent;color:#8ba197;font-size:19px}
+.view-resize-width::before{content:"";position:absolute;top:12px;bottom:12px;width:3px;left:4.5px;border-radius:4px;background:#8ba19742;transition:background .15s}
+.view-resize-width:hover:not(:disabled)::before,.view-resize-width:focus-visible::before{background:#167e7699}
+.view-resize-width:disabled{pointer-events:none}
+.scene-toolbar .view-resize-reset{font-size:16px;width:25px;min-width:25px;padding:0}
+.view-resize-dragging,.view-resize-dragging *{user-select:none!important}
+.workspace.view-resize-ready.view-heights-custom:not(.cutaway-study) .scene-column,.workspace.view-resize-ready.view-heights-custom:is(.presenting,.showcasing):not(.cutaway-study) .scene-column{grid-template-rows:var(--view-surface-height) auto auto}
+.workspace.view-resize-ready.view-heights-custom .view-resize-surface-pane{height:var(--view-surface-height);align-self:start}
+.workspace.view-resize-ready.view-heights-custom.cutaway-study .view-resize-hidden-pane{height:var(--view-hidden-height);align-self:start}
+.workspace.view-resize-ready.view-heights-custom.cutaway-study .scene-column,.workspace.view-resize-ready.view-heights-custom:is(.presenting,.showcasing).cutaway-study .scene-column{grid-template-rows:var(--view-row-height) auto 160px auto}
+#cutaway-home>.view-standalone-custom .cutaway-canvas{height:var(--view-standalone-height)}
+@media(min-width:701px){
+  .workspace.view-resize-ready.view-widths-custom.cutaway-study .scene-column,.workspace.view-resize-ready.view-widths-custom:is(.presenting,.showcasing).cutaway-study .scene-column{grid-template-columns:minmax(0,var(--view-surface-track)) minmax(0,var(--view-hidden-track))}
+  .workspace.view-resize-ready.view-heights-custom.showcasing:not(.cutaway-study) .scene-column{grid-template-rows:var(--view-surface-height) auto 140px auto}
+}
+@media(max-width:700px){
+  .workspace.view-resize-ready.view-heights-custom:not(.cutaway-study) .scene-column,.workspace.view-resize-ready.view-heights-custom:is(.presenting,.showcasing):not(.cutaway-study) .scene-column{grid-template-rows:var(--view-surface-height) auto 280px auto}
+  .workspace.view-resize-ready.view-heights-custom.cutaway-study .scene-column,.workspace.view-resize-ready.view-heights-custom:is(.presenting,.showcasing).cutaway-study .scene-column{grid-template-rows:var(--view-surface-height) var(--view-hidden-height) auto 280px auto}
+  .view-resize-width{display:none}
+  .view-resize-surface-pane,.view-resize-hidden-pane{--view-height-handle:28px}
+}
+.workspace.constructing .view-resize-handle,.workspace.constructing .view-resize-reset{visibility:hidden}
+/* Keep explanations reachable when a presenter deliberately makes a pane short. */
+.workspace.view-heights-custom.cutaway-study .hidden-cutaway{overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;padding-bottom:7px}
+.workspace.view-heights-custom.cutaway-study .cutaway-visual{min-height:80px}
+.workspace.view-heights-custom.cutaway-study .hidden-cutaway>:not(.cutaway-visual){flex-shrink:0}
