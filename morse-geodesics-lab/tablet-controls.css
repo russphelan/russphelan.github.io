@@ -1,0 +1,83 @@
+/* Touch targets for large tablets. Load after the compact desktop styles.
+   Keep the observation panes prominent; only actual controls gain hit area. */
+@media (min-width:701px) and (pointer:coarse){
+  .page-shell{padding:12px 16px 16px}
+  .experiment-bar{gap:6px 12px}
+  .topology-strip{gap:5px}
+  .topology-strip h2,.path-view-control{font-size:11px}
+  .surface-choices>button{min-width:40px;min-height:40px;padding:5px 8px;font-size:12px}
+  .add-button,#neck-explanation-toggle{min-height:40px;font-size:11px;padding:5px 8px}
+  #experience-mode,#path-view{min-height:44px;font-size:12px;padding-top:7px;padding-bottom:7px}
+  .scene-options label{min-height:40px;font-size:11px;gap:7px}
+  .scene-options input,.pause-at-field input,.neck-follow input{width:18px;height:18px}
+
+  /* Reserve room for the taller touch controls below the observation panes. */
+  .workspace{--primary-height:clamp(285px,calc(100dvh - 330px),720px)}
+  .workspace.presenting{--primary-height:clamp(260px,calc(100dvh - 375px),676px)}
+  .workspace.showcasing{--primary-height:clamp(250px,calc(100dvh - 395px),654px)}
+  .workspace.downhill-active,.workspace:is(.presenting,.showcasing).downhill-active{--primary-height:clamp(285px,calc(100dvh - 455px),600px)}
+  .workspace.downhill-active.surface-mode-study,.workspace:is(.presenting,.showcasing).downhill-active.surface-mode-study{--primary-height:clamp(260px,calc(100dvh - 520px),600px)}
+  .workspace .scene-column input[type=range]{height:44px}
+  .index-readout label,.index-reveal-hint{font-size:11px}
+  .workspace .catalog-heading-row select{min-height:40px;font-size:11px}
+  .workspace .curve-list>button{min-height:44px;font-size:12px;padding:8px}
+  .workspace .curve-list button>span:last-child{font-size:11px}
+  .workspace .study-path-picker select{min-height:44px;font-size:12px}
+  .workspace .curve-list{gap:6px}
+  .travel-label-row,.pause-at-field{font-size:12px}
+  .travel-label-row{min-height:32px}
+  .pause-at-field{min-height:32px}
+  .playback-row .play-button,.speed-label select{min-height:44px;font-size:12px}
+  .scene-toolbar button{min-width:40px;min-height:40px}
+  .scene-toolbar .view-resize-reset{width:40px;min-width:40px}
+  .scene-toolbar .reset-camera{font-size:11px}
+  .workspace summary{min-height:36px;font-size:12px;padding-top:8px;padding-bottom:8px}
+
+  .downhill-study-kind button,.downhill-toolbar button,.downhill-toolbar select,
+  .downhill-hidden-directions button,.mode-comparison-toolbar button,.mode-comparison-buttons button{min-height:44px;font-size:12px}
+  .downhill-toolbar>label,.downhill-push,.mode-comparison-patterns label{font-size:12px}
+  .downhill-toolbar select{max-width:300px}
+  .downhill-display-scale select{min-height:40px;font-size:12px}
+  .downhill-segment,.downhill-push small,.mode-comparison-explanation,.mode-comparison-segment{font-size:11px}
+  .length-fit-buttons button{min-height:36px;font-size:11px}
+  .length-scale-controls label,.length-scale-controls output,.length-axis-label{font-size:11px}
+  .ribbon-mode-control select,.ribbon-scale-actions button,.jacobi-graph-scales>button{min-height:40px;font-size:12px}
+  .ribbon-slider-control>div:first-child,.jacobi-graph-scale{font-size:12px}
+
+  .workspace.cutaway-study .hidden-neighborhood-details>summary{min-height:44px;padding-top:4px;padding-bottom:4px}
+  .workspace.cutaway-study .hidden-cutaway{top:44px}
+  #cutaway-layout-toggle{min-height:36px;font-size:11px}
+  .cutaway-controls button,.cutaway-events button{min-height:40px;font-size:11px}
+  .workspace.cutaway-study .cutaway-controls>[data-cutaway=reset]{min-height:36px;font-size:11px}
+  .workspace.cutaway-study .cutaway-gain-control{font-size:11px}
+  .workspace.cutaway-study .cutaway-readout{font-size:11px}
+
+  .view-resize-surface-pane,.view-resize-hidden-pane{--view-height-handle:32px}
+  .view-resize-width{width:20px}
+  .view-resize-width::before{left:8.5px}
+  .neck-resize-width{width:20px;min-width:20px}
+  .neck-resize-width::before{left:8.5px}
+  .neck-resize-overview,.neck-resize-scanner{height:32px;min-height:32px;flex-basis:32px;font-size:11px}
+  .neck-topline{padding-right:84px}
+  .neck-close,.neck-resize-reset{width:36px;height:36px}
+  .neck-resize-reset{right:46px}
+  .neck-link-toggle,.neck-side-controls button,.neck-math button{min-height:36px;font-size:11px}
+  .neck-scan-strip button{min-height:36px;font-size:10px}
+  .neck-scan-label,.neck-marker-key,.neck-message{font-size:11px}
+  .neck-follow{min-height:32px;gap:6px}
+  .neck-construction-controls .surgery-actions button,.surgery-actions button{min-height:40px;font-size:12px}
+  .neck-construction-controls .surgery-controls{grid-template-columns:135px minmax(0,1fr) 290px}
+  .surgery-readout,.surgery-stage{font-size:11px}
+
+  .showcase-bar button,.presentation-actions button{min-height:40px;font-size:11px}
+  .ambient-explorer button,.ambient-explorer select{min-height:40px;font-size:12px}
+  .ambient-explorer input[type=range],.advanced-controls input[type=range]{height:36px}
+  .offline-install>summary{min-height:40px;font-size:12px}
+  .offline-install-actions button{min-height:44px;font-size:12px}
+}
+
+/* In landscape the push slider must fit below both observation panes. */
+@media (min-width:701px) and (pointer:coarse) and (orientation:landscape){
+  .workspace.downhill-active,.workspace:is(.presenting,.showcasing).downhill-active{--primary-height:clamp(285px,calc(100dvh - 515px),600px)}
+  .workspace.downhill-active.surface-mode-study,.workspace:is(.presenting,.showcasing).downhill-active.surface-mode-study{--primary-height:clamp(260px,calc(100dvh - 580px),600px)}
+}
