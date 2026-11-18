@@ -1,0 +1,11 @@
+/* Camera gestures stay inside the view; ordinary page scrolling stays outside. */
+.scene-toolbar{max-width:calc(100% - 18px);flex-wrap:wrap;justify-content:flex-end}
+.scene-toolbar .camera-fit{font-size:10px;padding:0 7px}
+.scene-toolbar .camera-view{min-height:27px;max-width:78px;padding:3px 16px 3px 5px;font-size:10px;color:#d8eae5;background:#102e3a;border-color:#a9dbd030}
+.camera-focus{position:absolute;left:0;top:0;z-index:4;pointer-events:none;color:#f4f7f3;font:10px/1.2 var(--sans);white-space:nowrap}
+.camera-focus::before{content:"";position:absolute;left:-6px;top:-6px;width:12px;height:12px;border:1.5px solid currentColor;border-radius:50%;box-shadow:0 0 0 2px #071e2b99}
+.camera-focus>span{display:block;margin:9px 0 0 9px;padding:3px 5px;border-radius:4px;background:#071e2bcc}
+@media (pointer:coarse){
+  .scene-toolbar .camera-fit{min-height:40px;font-size:11px}
+  .scene-toolbar .camera-view{min-height:40px;font-size:11px}
+}

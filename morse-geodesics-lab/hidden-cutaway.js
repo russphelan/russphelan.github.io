@@ -134,12 +134,15 @@
     let context={active:false,data:null,position:0,playing:false,error:'',deformation:null,study:null},profile=null,profileData=null;
     let deformation=null,deformationSource=null,deformationData=null,study=null;
     let gain=1,spin=DEFAULT_SPIN,tilt=DEFAULT_TILT,dragging=null,destroyed=false,cameraTouched=false,viewFraming=null;
+    // Camera navigation is independent of the labelled transverse field gain.
+    // Pan is stored as pane fractions so resizing preserves the chosen framing.
+    let cameraZoom=1,cameraPan=[0,0],cameraFocus=null,navigationPick=null,navigation=null,inputType=win.navigator?.maxTouchPoints>0?'touch':'mouse';
     // Presentation coordinates only: the measured fields, endpoints, and
     // finite curves never interpolate. Retain the outgoing study while zooming out.
     let view={inverseEnd:1,local:0,hidden:0},viewTarget=null,transition=null,animationFrame=0;
     let frameStudy=null,frameDeformation=null;
     const motionPreference=win.matchMedia?.('(prefers-reduced-motion: reduce)');
-    const listeners=[],listen=(target,type,handler)=>{target.addEventListener(type,handler);listeners.push([target,type,handler]);};
+    const listeners=[],listen=(target,type,handler,eventOptions)=>{target.addEventListener(type,handler,eventOptions);listeners.push([target,type,handler,eventOptions]);};
     const active=()=>context.active&&!doc.hidden&&!destroyed;
     const now=()=>win.performance?.now()??Date.now();
     const interpolate=(a,b,t)=>a+(b-a)*t;
@@ -169,7 +172,9 @@
       // the whole path into the local segment when the pointer is released.
       if(changed){transition={from:{...view},start:now(),duration:target.local?FRAME_TRANSITION_MS:GLOBAL_TRANSITION_MS};queueAnimation();}
     }
+    const navigationInstruction=()=>inputType==='touch'?'One finger rotates; two fingers pan and pinch to zoom; double-tap a strand to focus.':'Drag or use arrow keys to rotate; scroll to zoom; double-click a strand to focus.';
     const getState=()=>({active:active(),position:context.position,playing:context.playing,gain,
+      camera:{spin,tilt,zoom:cameraZoom,pan:cameraPan.slice(),focus:cameraFocus?{...cameraFocus}:null,inputType},
       length:context.data?.length||0,field:context.data?fieldState(context.data,context.position):null,
       deformation:deformation?{type:deformation.type,T:deformation.T,magnification:gain*deformation.magnification,maxRadius:deformation.maxRadius}:null,
       framing:viewFraming?{...viewFraming}:null});
@@ -209,7 +214,7 @@
         }
         root.dataset.position=String(s);root.dataset.hidden=String(state.h);root.dataset.hiddenPassed=String(passed);
         root.dataset.focus=state.event?state.event.endpoint?'endpoint':'hidden':surfaceEvent?'surface':'none';
-        canvas.setAttribute('aria-label','Local straightened cutaway at '+percent+' percent. '+message+' Drag or use arrow keys to rotate.');
+        canvas.setAttribute('aria-label','Local straightened cutaway at '+percent+' percent. '+message+' '+navigationInstruction());
       }else{
         $('position-value').textContent='—';$('scale').textContent='Choose a path above; this position control will then follow the main traversal slider.';
         canvas.setAttribute('aria-label',message);
@@ -229,7 +234,7 @@
         $('scale').textContent=study.type==='hidden'?
           'The bright curve uses actual normal coordinates (y₁, y₂), with the labelled drawing magnification. Its ambient length is measured in the chosen tube metric, not from the length of this straightened picture.':
           'Forward motion and two off-surface coordinates are shown here. The sideways surface push appears in the main surface view.';
-        canvas.setAttribute('aria-label',message+' Drag or use arrow keys to rotate.');
+        canvas.setAttribute('aria-label',message+' '+navigationInstruction());
       }
       $('note').textContent=study?
         'The bright finite push and its length measurement belong to the local metric neighborhood. Faint amber and purple strands show infinitesimal Jacobi fields for context. The coordinates straighten the original path and magnify transverse motion; drawing lengths are not manifold lengths.':DEFAULT_NOTE;
@@ -242,8 +247,11 @@
       // The default study angle separates A and B without making A=B almost
       // edge-on. A camera that the audience has turned is always preserved.
       const displaySpin=cameraTouched?spin:interpolate(spin,STUDY_SPIN,view.local);
-      const back=unit([Math.sin(tilt),-Math.cos(tilt)*Math.cos(displaySpin),Math.cos(tilt)*Math.sin(displaySpin)]);
-      const right=unit([1-back[0]*back[0],-back[0]*back[1],-back[0]*back[2]]),up=cross(back,right);
+      const ct=Math.cos(tilt),st=Math.sin(tilt),cs=Math.cos(displaySpin),ss=Math.sin(displaySpin);
+      const back=unit([st,-ct*cs,ct*ss]);
+      // Keep the existing default projection exactly, but retain its signed
+      // analytic continuation through both end-on poles and inverted views.
+      const right=Math.abs(ct)>1e-6?unit([1-back[0]*back[0],-back[0]*back[1],-back[0]*back[2]]).map(v=>v*Math.sign(ct)):[ct,st*cs,-st*ss],up=cross(back,right);
       // The active x→p segment occupies the pane, instead of reserving most of
       // it for the unused original tail. Drawing scales are not metric lengths.
       // Fit the complete, normalized whole-path envelope, including its guide
@@ -254,10 +262,10 @@
       // signs, or the audience's camera angle. Fit at unit gain so the manual
       // magnification control continues to enlarge the fields afterward.
       const guideRadius=1.1,globalScaleX=Math.max(1,w-100)/
-        (9*right[0]+2*guideRadius*Math.hypot(right[1],right[2])),
+        (9*Math.abs(right[0])+2*guideRadius*Math.hypot(right[1],right[2])),
         globalScaleY=Math.max(1,h-78)/(2*guideRadius*Math.hypot(up[1],up[2]));
       const localCy=(34+h-28)/2,cx=w*.5,cy=interpolate((40+h-38)/2,localCy,view.local);
-      const longitudinal=interpolate(globalScaleX,Math.max(1,(w-100)/(9*right[0])),view.local);
+      const longitudinal=interpolate(globalScaleX,Math.max(1,(w-100)/(9*Math.max(.15,Math.abs(right[0])))),view.local);
       const finiteRadius=FINITE_RADIUS*FINITE_MAGNIFICATION;
       const contextRadial=Math.max(8,Math.min((w-70)/10,(h-95)/5)),
         finiteRadial=Math.max(1,Math.min((w-70)/10,Math.max(1,Math.min(localCy-34,h-28-localCy))/finiteRadius));
@@ -268,8 +276,11 @@
         radialY=(1-view.local)*globalScaleY+view.local*contextRadial+view.hidden*(finiteRadial-contextRadial);
       viewFraming={start:0,end:transition?1/view.inverseEnd:study?.T??context.data?.length??0,mode:transition?'transition':view.local?'study-segment':'whole-path',
         targetMode:viewTarget?.local?'study-segment':'whole-path',progress:view.local,pushClipped:false};
-      return point=>({x:cx+longitudinal*point[0]*right[0]+radialX*(point[1]*right[1]+point[2]*right[2]),
-        y:cy-radialY*(point[1]*up[1]+point[2]*up[2]),z:dot(point,back)});
+      const offset=point=>[longitudinal*point[0]*right[0]+radialX*(point[1]*right[1]+point[2]*right[2]),
+        -radialY*(point[1]*up[1]+point[2]*up[2])];
+      const focus=cameraFocus?offset([9*(cameraFocus.s/viewFraming.end-.5),cameraFocus.a,cameraFocus.b]):[0,0];
+      return point=>{const q=offset(point);return {x:cx+cameraZoom*(q[0]-focus[0])+cameraPan[0]*w,
+        y:cy+cameraZoom*(q[1]-focus[1])+cameraPan[1]*h,z:dot(point,back)};};
     }
     function draw(){
       if(!c||!active())return;
@@ -292,6 +303,23 @@
       const interval=viewFraming.end,displayEnd=Math.min(data.length,interval*1.12),local=view.local;
       const xAt=s=>9*(s/interval-.5);
       const point=(s,a,b)=>[xAt(s),a,b],displacement=h=>gain*h/profile.maximum;
+      navigationPick=({x,y})=>{
+        let best=null,bestDistance=32*32;
+        const segment=(a,b)=>{const p=project(point(a.s,a.a,a.b)),q=project(point(b.s,b.a,b.b)),
+          dx=q.x-p.x,dy=q.y-p.y,length=dx*dx+dy*dy,
+          t=length?clamp(((x-p.x)*dx+(y-p.y)*dy)/length,0,1):0,
+          distance=(p.x+t*dx-x)**2+(p.y+t*dy-y)**2;
+          if(distance<bestDistance){bestDistance=distance;best={s:interpolate(a.s,b.s,t),a:interpolate(a.a,b.a,t),b:interpolate(a.b,b.b,t)};}};
+        // Pick the line actually drawn, not just its sample vertices: close-up
+        // navigation can place adjacent vertices hundreds of pixels apart.
+        segment({s:0,a:0,b:0},{s:Math.max(displayEnd,current.s),a:0,b:0});
+        const directions=[[1,0],[-1,0],[0,1],[0,-1],...[Math.PI/4,3*Math.PI/4,5*Math.PI/4,7*Math.PI/4].map(angle=>[Math.cos(angle),Math.sin(angle)])];
+        for(const [a,b]of directions){let previous=null;
+          for(const row of all){const r=displacement(row.h),next={s:row.s,a:r*a,b:r*b};if(previous)segment(previous,next);previous=next;}}
+        if(finite){let previous=null;for(const row of finite.samples){const next={s:row.s,a:gain*finite.magnification*row.y[0],b:gain*finite.magnification*row.y[1]};
+          if(previous)segment(previous,next);previous=next;}}
+        return best;
+      };
       const line=(a,b,color,width=1,dashed=false)=>{
         const p=project(a),q=project(b);c.beginPath();c.moveTo(p.x,p.y);c.lineTo(q.x,q.y);c.strokeStyle=color;c.lineWidth=width;c.setLineDash(dashed?[4,5]:[]);c.stroke();c.setLineDash([]);
       };
@@ -417,7 +445,11 @@
       root.dataset.framing=viewFraming.mode;root.dataset.displayEnd=String(viewFraming.end);root.dataset.pushClipped=String(viewFraming.pushClipped);
       root.dataset.transitionProgress=String(viewFraming.progress);root.dataset.targetFraming=viewFraming.targetMode;
       c.globalAlpha=1;
-      c.fillStyle=viewFraming.pushClipped?COLORS.a:COLORS.muted;c.textAlign='center';c.font='9px system-ui, sans-serif';c.fillText(viewFraming.pushClipped?'Push exceeds frame · reduce magnification':w<650?'Drag to turn · faint discs are coordinate guides':'Drag to turn · arrow keys · forward direction s is straightened; transverse sizes are magnified',w/2,h-11);
+      if(cameraFocus){const p=project(point(cameraFocus.s,cameraFocus.a,cameraFocus.b));c.strokeStyle='#edf8f1b0';c.lineWidth=1;
+        c.beginPath();c.arc(p.x,p.y,6,0,TAU);c.stroke();c.fillStyle='#edf8f1b0';c.textAlign='left';c.font='9px system-ui, sans-serif';c.fillText('Camera focus',p.x+9,p.y-9);}
+      root.dataset.cameraZoom=String(cameraZoom);root.dataset.cameraInput=inputType;root.dataset.cameraFocus=cameraFocus?String(cameraFocus.s):'';
+      const cameraAdjusted=cameraZoom!==1||cameraPan.some(Boolean)||!!cameraFocus;
+      c.fillStyle=viewFraming.pushClipped?COLORS.a:COLORS.muted;c.textAlign='center';c.font='9px system-ui, sans-serif';c.fillText(viewFraming.pushClipped?cameraAdjusted?'Push outside view · zoom out or reset view':'Push exceeds frame · reduce magnification':inputType==='touch'?'1 finger: turn · 2: move / pinch · double-tap: focus':w<650?'Drag to turn · scroll to zoom · double-click: focus':'Drag to turn · scroll to zoom · double-click: focus · faint discs are coordinate guides',w/2,h-11);
     }
     function seek(s){
       if(!context.data)return;
@@ -433,18 +465,49 @@
       if(!cameraTouched)spin=interpolate(spin,STUDY_SPIN,view.local);
       cameraTouched=true;
     }
-    function stopDrag(event){if(event?.pointerId!==undefined&&dragging?.id!==event.pointerId)return;dragging=null;}
+    const wrap=value=>((value+Math.PI)%TAU+TAU)%TAU-Math.PI;
+    function rotate({dx,dy}){
+      if(!active()||!Number.isFinite(dx)||!Number.isFinite(dy))return;beginCameraMove();spin=wrap(spin+dx*.01);tilt=wrap(tilt+dy*.008);draw();
+    }
+    function transform({from,to,factor}){
+      if(!active()||!(factor>0)||!Number.isFinite(factor)||![from?.x,from?.y,to?.x,to?.y].every(Number.isFinite))return;
+      beginCameraMove();const box=canvas.getBoundingClientRect(),w=Math.max(1,box.width),h=Math.max(1,box.height),
+        cx=w/2,cy=interpolate((40+h-38)/2,(34+h-28)/2,view.local),
+        next=clamp(cameraZoom/factor,.02,64),k=next/cameraZoom;
+      cameraPan=[(to.x-cx-k*(from.x-cx-cameraPan[0]*w))/w,
+        (to.y-cy-k*(from.y-cy-cameraPan[1]*h))/h];
+      cameraZoom=next;draw();
+    }
+    function focusAt(position){
+      if(!active()||!navigationPick||![position?.x,position?.y].every(Number.isFinite))return;beginCameraMove();
+      cameraFocus=navigationPick(position);cameraPan=[0,0];
+      if(!cameraFocus)cameraZoom=1;draw();
+    }
+    function resetNavigation(){cameraZoom=1;cameraPan=[0,0];cameraFocus=null;}
+    function stopDrag(event){if(event?.pointerId!==undefined&&dragging?.id!==event.pointerId)return;dragging=null;navigation?.cancel();}
     listen($('position'),'input',()=>seek(context.data?context.data.length*Number($('position').value)/100000:0));
     listen($('gain'),'input',()=>{gain=Number($('gain').value)/100;refresh();draw();});
     listen($('play'),'click',()=>{if(!context.data||study)return;if(context.playing)options.onPause?.();else options.onPlay?.();});
-    listen($('reset'),'click',()=>{spin=DEFAULT_SPIN;tilt=DEFAULT_TILT;cameraTouched=false;gain=1;$('gain').value=100;refresh();draw();});
+    listen($('reset'),'click',()=>{spin=DEFAULT_SPIN;tilt=DEFAULT_TILT;cameraTouched=false;resetNavigation();gain=1;$('gain').value=100;refresh();draw();});
     listen($('events'),'click',event=>{const button=event.target.closest?.('button[data-cutaway-event]');if(button&&profile)seek(profile.events[Number(button.dataset.cutawayEvent)].s);});
     canvas.style.touchAction='none';
-    listen(canvas,'pointerdown',event=>{if(!active()||dragging||event.isPrimary===false||event.button!==0)return;dragging={id:event.pointerId,x:event.clientX,y:event.clientY};canvas.setPointerCapture(event.pointerId);canvas.focus({preventScroll:true});});
-    listen(canvas,'pointermove',event=>{if(!dragging||dragging.id!==event.pointerId)return;if(!active()||event.buttons===0){stopDrag();return;}beginCameraMove();spin+=(event.clientX-dragging.x)*.01;tilt=clamp(tilt+(event.clientY-dragging.y)*.008,-1.05,1.05);dragging.x=event.clientX;dragging.y=event.clientY;draw();});
-    for(const type of ['pointerup','pointercancel','lostpointercapture'])listen(canvas,type,stopDrag);
+    const gestureFactory=options.gestures||win.GeodesicCameraGestures;
+    if(gestureFactory)navigation=gestureFactory.create({element:canvas,enabled:active,onRotate:rotate,onTransform:transform,onFocus:focusAt,
+      onStart:()=>canvas.focus?.({preventScroll:true}),onInput:type=>{if(type===inputType)return;inputType=type;refresh();draw();}});
+    else{
+      // The cutaway can still be embedded alone; the app loads the shared
+      // multi-pointer controller for touch, Pencil, and mouse navigation.
+      listen(canvas,'pointerdown',event=>{if(!active()||dragging||event.isPrimary===false||event.button!==0)return;dragging={id:event.pointerId,x:event.clientX,y:event.clientY};canvas.setPointerCapture(event.pointerId);canvas.focus({preventScroll:true});});
+      listen(canvas,'pointermove',event=>{if(!dragging||dragging.id!==event.pointerId)return;if(!active()||event.buttons===0){stopDrag();return;}rotate({dx:event.clientX-dragging.x,dy:event.clientY-dragging.y});dragging.x=event.clientX;dragging.y=event.clientY;});
+      for(const type of ['pointerup','pointercancel','lostpointercapture'])listen(canvas,type,stopDrag);
+    }
     for(const type of ['blur','pagehide'])listen(win,type,()=>stopDrag());
-    listen(canvas,'keydown',event=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home'].includes(event.key))return;if(event.key!=='Home')beginCameraMove();if(event.key==='ArrowLeft')spin-=.15;else if(event.key==='ArrowRight')spin+=.15;else if(event.key==='ArrowUp')tilt=clamp(tilt-.12,-1.05,1.05);else if(event.key==='ArrowDown')tilt=clamp(tilt+.12,-1.05,1.05);else{spin=DEFAULT_SPIN;tilt=DEFAULT_TILT;cameraTouched=false;}event.preventDefault();draw();});
+    listen(canvas,'wheel',event=>{if(!active())return;event.preventDefault();const box=canvas.getBoundingClientRect(),
+      x=event.clientX-(box.left||0),y=event.clientY-(box.top||0),delta=event.deltaY*(event.deltaMode===1?16:event.deltaMode===2?box.height:1);
+      transform({from:{x,y},to:{x,y},factor:Math.exp(clamp(delta,-300,300)*.001)});},{passive:false});
+    listen(canvas,'keydown',event=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','+','=','-'].includes(event.key))return;
+      event.preventDefault();if(['+','=','-'].includes(event.key)){const box=canvas.getBoundingClientRect(),p={x:box.width/2,y:box.height/2};transform({from:p,to:p,factor:event.key==='-'?1/.9:.9});return;}
+      if(event.key!=='Home')beginCameraMove();if(event.key==='ArrowLeft')spin=wrap(spin-.15);else if(event.key==='ArrowRight')spin=wrap(spin+.15);else if(event.key==='ArrowUp')tilt=wrap(tilt-.12);else if(event.key==='ArrowDown')tilt=wrap(tilt+.12);else{spin=DEFAULT_SPIN;tilt=DEFAULT_TILT;cameraTouched=false;resetNavigation();}draw();});
     listen(doc,'visibilitychange',()=>{if(doc.hidden){stopDrag();settleView();}else draw();});
     if(motionPreference?.addEventListener)listen(motionPreference,'change',()=>{if(motionPreference.matches){settleView();draw();}});
     const observer=win.ResizeObserver?new win.ResizeObserver(draw):null;observer?.observe(canvas);
@@ -454,6 +517,7 @@
       const previous=context;context={...context,...next};
       if(!active()||previous.data!==context.data)stopDrag();
       if(previous.data!==context.data){
+        navigationPick=null;cameraFocus=null;
         if(!Object.prototype.hasOwnProperty.call(next,'requestedPosition'))context.requestedPosition=null;
         if(!Object.prototype.hasOwnProperty.call(next,'deformation'))context.deformation=null;
         if(!Object.prototype.hasOwnProperty.call(next,'study'))context.study=null;
@@ -467,7 +531,7 @@
       if(active()&&context.data!==profileData){profileData=context.data;profile=context.data?prepareProfile(context.data):null;updateEvents();}
       if(active()&&(previous.active!==context.active||previous.data!==context.data||previous.position!==context.position||previous.playing!==context.playing||previous.error!==context.error||previous.deformation!==context.deformation||previous.study!==context.study)){refresh();draw();}
       else if(active()&&previous.requestedPosition!==context.requestedPosition)refresh();
-    },destroy(){destroyed=true;stopAnimation();transition=null;observer?.disconnect();for(const [target,type,handler]of listeners)target.removeEventListener(type,handler);}};
+    },destroy(){destroyed=true;stopAnimation();transition=null;navigation?.destroy();observer?.disconnect();for(const [target,type,handler,eventOptions]of listeners)target.removeEventListener(type,handler,eventOptions);}};
   }
   return {create,fieldState,prepareProfile,prepareDeformation,contributionBefore,eventsOf,surfaceEventLabel,describePosition};
 });

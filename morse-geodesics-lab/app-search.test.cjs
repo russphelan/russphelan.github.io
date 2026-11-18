@@ -134,7 +134,7 @@ test('document interaction hooks hold the worker through a stationary drag and r
 test('page lifecycle halts hidden work, flushes on departure and resumes only exploration on return',()=>{
   const lifecycle=between("  document.addEventListener('visibilitychange'","  $('jacobi').closest('details')");
   const events=[],documentHandlers={},windowHandlers={},state={mode:'explore',surgery:null,playing:true};
-  const context={cancelSurfaceTraversal(){},downhillPreparation:{block(){}},state,frame:1,lastTime:1,dragging:{id:1},document:{hidden:true,addEventListener(type,fn){documentHandlers[type]=fn;}},
+  const context={cancelSurfaceTraversal(){},downhillPreparation:{block(){}},state,frame:1,lastTime:1,document:{hidden:true,addEventListener(type,fn){documentHandlers[type]=fn;}},
     window:{addEventListener(type,fn){windowHandlers[type]=fn;}},
     searchManager:{block(reason,value){events.push(['block',reason,value]);},activate(){events.push(['activate']);},flush(){events.push(['flush']);}},
     searchConfig:()=>({}),cancelSurgeryWarmup(){events.push(['cancel warm']);},surgeryPreparation:{cancelPending(){events.push(['cancel preparation']);}},
@@ -142,7 +142,7 @@ test('page lifecycle halts hidden work, flushes on departure and resumes only ex
     cancelAnimationFrame(){events.push(['cancel frame']);},requestDraw(){events.push(['draw']);},warmNextSurgery(){events.push(['warm']);},
     stopSearch(){events.push(['stop']);},cancelSurgery(){state.surgery=null;}};
   vm.runInNewContext(lifecycle,context);documentHandlers.visibilitychange();
-  assert.deepEqual(events[0],['block','hidden page',true]);assert.equal(state.playing,false);assert.equal(context.dragging,null);assert.equal(context.frame,0);
+  assert.deepEqual(events[0],['block','hidden page',true]);assert.equal(state.playing,false);assert.equal(context.frame,0);
   assert.ok(events.some(event=>event[0]==='neck active'&&event[1]===false),'Hidden pages stop the optional neck explanation too.');
   assert.ok(events.some(event=>event[0]==='neck resize active'&&event[1]===false),'Hidden pages deactivate neck resize handles before the animation frame is canceled.');
   context.document.hidden=false;documentHandlers.visibilitychange();assert.ok(events.some(event=>event[0]==='warm'));

@@ -202,3 +202,123 @@ test('inward clipping protection never blocks an outward request',()=>{
  assert.ok(C.project(C.frame(bounds,out,900,600),anchor.point).depth>.1);
  assert.deepEqual(out.targetOffset,next.targetOffset,'Centered zoom never pans the orbit target.');
 });
+
+test('screen panning follows the fingers at the chosen depth above, below, and past the poles',()=>{
+ for(const pitch of [.95,-.95,Math.PI/2,2.1,-2.1]){
+  const camera={...C.defaultCamera(),pitch},f=C.frame(bounds,camera,1024,700),point=C.anchorAt(f,540,320,sphere).point;
+  const before=C.project(f,point),next=C.panScreen({bounds,camera,width:1024,height:700,dx:75,dy:-43,depth:before.depth});
+  const after=C.project(C.frame(bounds,next,1024,700),point);
+  near(after.x-before.x,75);near(after.y-before.y,-43);near(after.depth,before.depth);
+  near(next.zoom,camera.zoom);near(next.pitch,camera.pitch);near(next.yaw,camera.yaw);
+ }
+});
+
+test('combined pinch and pan keep actual torus and neck points beneath the finger midpoint',()=>{
+ for(const id of ['torus','double','triple'])for(const pitch of [.95,-.95,2.1,-2.1]){
+  const model=S.getModel(id),camera={...C.defaultCamera(),pitch},f=C.frame(model.bounds,camera,1024,700),yz=Math.hypot(f.back[1],f.back[2]);
+  const targets=[model.point(-1.35,pitch<0?-.95:.95)];
+  if(model.bridges?.length)targets.push([model.bridges[0],model.neckRadius*f.back[1]/yz,model.neckRadius*f.back[2]/yz]);
+  for(const point of targets){
+   const p=C.project(f,point),from={x:p.x,y:p.y,span:100},to={x:p.x+24,y:p.y-18,span:160};
+   const anchor=C.anchorAt(f,from.x,from.y,model);assert.equal(anchor.hit,true,id+' must offer a visible surface anchor.');
+   const oldPixel=C.project(f,anchor.point),next=C.touchTransform({bounds:model.bounds,camera,width:1024,height:700,from,to,model});
+   const after=C.project(C.frame(model.bounds,next,1024,700),anchor.point);
+   near(after.x,to.x);near(after.y,to.y);near(after.depth,oldPixel.depth*100/160);
+   near(next.pitch,camera.pitch);near(next.yaw,camera.yaw);assert.equal(next.localFocus,true);
+  }
+ }
+});
+
+test('finger-count rebasing without motion leaves the image stationary',()=>{
+ const camera={...C.defaultCamera(),targetOffset:[.4,-.3,.2]},f=C.frame(bounds,camera,900,600);
+ const next=C.touchTransform({bounds,camera,width:900,height:600,from:{x:490,y:310,span:130},to:{x:490,y:310,span:130},model:sphere});
+ const after=C.frame(bounds,next,900,600);
+ near(distance(f.eye,after.eye),0);near(distance(f.right,after.right),0);near(distance(f.up,after.up),0);
+ for(const point of [[0,0,0],[1,0,0],[0,0,1]]){
+  const a=C.project(f,point),b=C.project(after,point);near(a.x,b.x);near(a.y,b.y);near(a.depth,b.depth);
+ }
+});
+
+test('empty-space pinching and panning use the target plane and remain reversible',()=>{
+ const camera={...C.defaultCamera(),pitch:-2.1,targetOffset:[.2,-.1,.4]},f=C.frame(bounds,camera,900,600);
+ const from={x:80,y:65,span:180},to={x:115,y:90,span:90},anchor=C.anchorAt(f,from.x,from.y,sphere);
+ assert.equal(anchor.hit,false);
+ const next=C.touchTransform({bounds,camera,width:900,height:600,from,to,model:sphere});
+ const pixel=C.project(C.frame(bounds,next,900,600),anchor.point);near(pixel.x,to.x);near(pixel.y,to.y);
+ const restored=C.touchTransform({bounds,camera:next,width:900,height:600,from:to,to:from,model:null});
+ near(distance(C.frame(bounds,restored,900,600).eye,f.eye),0);
+});
+
+test('surface focus recenters an underside neighborhood without changing its apparent scale',()=>{
+ for(const id of ['torus','double','triple'])for(const pitch of [-.95,2.1]){
+  const model=S.getModel(id),camera={...C.defaultCamera(),pitch},f=C.frame(model.bounds,camera,1024,700);
+  const p=C.project(f,model.point(-1.35,-.95)),anchor=C.anchorAt(f,p.x,p.y,model);assert.equal(anchor.hit,true);
+  const oldPixel=C.project(f,anchor.point),next=C.focusAt({bounds:model.bounds,camera,width:1024,height:700,x:p.x,y:p.y,model});
+  const after=C.frame(model.bounds,next,1024,700),pixel=C.project(after,anchor.point);
+  near(pixel.x,512);near(pixel.y,350);near(pixel.depth,oldPixel.depth);
+  near(distance(after.target,anchor.point),0);near(next.yaw,camera.yaw);near(next.pitch,camera.pitch);
+  const turned=C.frame(model.bounds,C.turn(next,.7,Math.PI),1024,700),turnedPixel=C.project(turned,anchor.point);
+  near(turnedPixel.x,512);near(turnedPixel.y,350);
+ }
+ const camera=C.defaultCamera();assert.deepEqual(C.focusAt({bounds,camera,width:900,height:600,x:0,y:0,model:sphere}),camera);
+});
+
+test('local pinch close-ups reach the near plane and zoom-out buttons recover without a distance jump',()=>{
+ const initial=C.defaultCamera(),f=C.frame(bounds,initial,900,600),anchor=C.anchorAt(f,490,280,sphere);
+ const focused=C.focusAt({bounds,camera:initial,width:900,height:600,x:490,y:280,model:sphere});
+ const midpoint={x:450,y:300,span:100};
+ const close=C.touchTransform({bounds,camera:focused,width:900,height:600,from:midpoint,to:midpoint,factor:1e-10,model:sphere});
+ assert.ok(close.zoom<C.MIN_ZOOM,'A focused neighborhood is not limited by the size of the full manifold.');
+ const closeFrame=C.frame(bounds,close,900,600),pixel=C.project(closeFrame,anchor.point);
+ near(pixel.depth,closeFrame.near);
+ const out=C.zoomAt({bounds,camera:close,width:900,height:600,x:450,y:300,factor:1.1,model:sphere});
+ const after=C.frame(bounds,out,900,600),outPixel=C.project(after,anchor.point);
+ near(outPixel.depth,pixel.depth*1.1);assert.ok(distance(after.eye,closeFrame.eye)>0);
+ const stillClose=C.zoomAt({bounds,camera:out,width:900,height:600,x:450,y:300,factor:.95,model:sphere});
+ assert.ok(stillClose.zoom<out.zoom,'Desktop controls remain continuous after using touch focus.');
+});
+
+test('pinch-out escapes displaced and inverted close-up targets until the whole manifold fits',()=>{
+ for(const id of ['torus','double','triple'])for(const pitch of [-2.1,Math.PI/2]){
+  const model=S.getModel(id),initial={...C.defaultCamera(),pitch,zoom:C.MAX_ZOOM},f=C.frame(model.bounds,initial,900,600);
+  let camera={...initial,localFocus:true,targetOffset:f.back.map((v,i)=>-v*f.distance+f.right[i]*f.radius*.5)};
+  const from={x:450,y:300,span:120},to={x:450,y:300,span:100};
+  const start=C.frame(model.bounds,camera,900,600);
+  const first=C.touchTransform({bounds:model.bounds,camera,width:900,height:600,from,to,model});
+  assert.ok(dot(C.frame(model.bounds,first,900,600).eye.map((v,i)=>v-start.eye[i]),start.back)>0,id+' pinch-out must retreat.');
+  camera=first;
+  for(let i=0;i<80;i++)camera=C.touchTransform({bounds:model.bounds,camera,width:900,height:600,from,to,model});
+  assertFits(model,camera);
+ }
+});
+
+test('a near-plane focus keeps its physical distance through complete orbits and resized views',()=>{
+ for(const id of ['torus','double','triple']){
+  const model=S.getModel(id),initial=C.defaultCamera(),f=C.frame(model.bounds,initial,1024,700);
+  const p=C.project(f,model.point(-1.35,.95)),focused=C.focusAt({bounds:model.bounds,camera:initial,width:1024,height:700,x:p.x,y:p.y,model});
+  const midpoint={x:512,y:350,span:100};
+  let camera=C.touchTransform({bounds:model.bounds,camera:focused,width:1024,height:700,from:midpoint,to:midpoint,factor:1e-10,model});
+  const start=C.frame(model.bounds,camera,1024,700),point=start.target;
+  for(let i=0;i<40;i++){
+   camera=C.turn(camera,.21,.37);const width=i%2?1024:500,height=i%2?700:850;
+   const after=C.frame(model.bounds,camera,width,height),pixel=C.project(after,point);
+   near(after.distance,start.distance);near(pixel.depth,start.distance);near(pixel.x,width/2);near(pixel.y,height/2);
+   assert.ok(Array.from(after.m).every(Number.isFinite));
+  }
+ }
+});
+
+test('fit all preserves orientation and all touch helpers preserve caller state',()=>{
+ const camera={...C.defaultCamera(),pitch:2.1,zoom:.01,localFocus:true,targetOffset:[7,-3,2]},before=JSON.stringify(camera);
+ C.panScreen({bounds,camera,width:900,height:600,dx:12,dy:8});
+ C.focusAt({bounds,camera,width:900,height:600,x:450,y:300,model:sphere});
+ C.touchTransform({bounds,camera,width:900,height:600,from:{x:10,y:20,span:10},to:{x:30,y:40,span:15}});
+ assert.equal(JSON.stringify(camera),before);
+ for(const args of [{from:{x:NaN,y:0},to:{x:0,y:0},factor:1},{from:{x:0,y:0},to:{x:0,y:0},factor:0}]){
+  assert.deepEqual(C.touchTransform({bounds,camera,width:900,height:600,...args}),camera);
+ }
+ for(const id of ['torus','double','triple']){
+  const model=S.getModel(id),fit=C.fitAll({bounds:model.bounds,camera,width:900,height:600});
+  near(fit.yaw,camera.yaw);near(fit.pitch,camera.pitch);assert.equal(fit.localFocus,false);assert.deepEqual(fit.targetOffset,[0,0,0]);assertFits(model,fit);
+ }
+});

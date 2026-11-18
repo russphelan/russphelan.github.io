@@ -103,10 +103,15 @@ test('finite curve validation rejects loose endpoints, reordered samples, and in
 
 function fakeComponent(options={},box={width:700,height:330},environment={}){
  const labels=[],strokes=[],texts=[],fills=[];let draws=0,resize=null;
- function element(){return {textContent:'',value:'',disabled:false,dataset:{},style:{},children:[],attributes:{},handlers:{},
+ function events(target){const registered=new Map();
+  target.addEventListener=(type,fn)=>{if(!registered.has(type))registered.set(type,new Set());registered.get(type).add(fn);
+   target.handlers[type]=event=>{for(const callback of [...(registered.get(type)||[])])callback(event);};};
+  target.removeEventListener=(type,fn)=>{registered.get(type)?.delete(fn);if(!registered.get(type)?.size)delete target.handlers[type];};return target;
+ }
+ function element(){return events({textContent:'',value:'',disabled:false,dataset:{},style:{},children:[],attributes:{},handlers:{},
    classList:{add(){},toggle(){}},addEventListener(type,fn){this.handlers[type]=fn;},removeEventListener(){},
    setAttribute(name,value){this.attributes[name]=value;},replaceChildren(){this.children=[];},
-   append(child){this.children.push(child);},querySelectorAll(){return this.children;}};}
+   append(child){this.children.push(child);},querySelectorAll(){return this.children;}});}
  let path=[];
  const ctx={setTransform(){},clearRect(){draws++;},createLinearGradient(){return {addColorStop(){}};},fillRect(){},
    beginPath(){path=[];},moveTo(x,y){path.push([x,y]);},lineTo(x,y){path.push([x,y]);},arc(){},setLineDash(){},closePath(){},
@@ -114,10 +119,11 @@ function fakeComponent(options={},box={width:700,height:330},environment={}){
    stroke(){strokes.push({color:this.strokeStyle,alpha:this.globalAlpha,points:path.slice()});},
    measureText(text){return {width:text.length*5};},fillText(text){labels.push(text);texts.push({text,color:this.fillStyle});}};
  const nodes={};for(const name of ['canvas','play','position','position-value','gain','gain-value','reset','events','readout','scale','note','field-ring-legend'])nodes[name]=element();
- nodes.canvas.getContext=()=>ctx;nodes.canvas.getBoundingClientRect=()=>box;
- const doc={hidden:false,handlers:{},createElement:element,
+ nodes.canvas.getContext=()=>ctx;nodes.canvas.getBoundingClientRect=()=>({left:0,top:0,...box});
+ const doc=events({hidden:false,handlers:{},createElement:element,
    addEventListener(type,handler){this.handlers[type]=handler;},removeEventListener(type){delete this.handlers[type];},
-   defaultView:{handlers:{},addEventListener(type,handler){this.handlers[type]=handler;},removeEventListener(type){delete this.handlers[type];},devicePixelRatio:1,ResizeObserver:class{constructor(callback){resize=callback;}observe(){}disconnect(){}},...environment}};
+   defaultView:events({handlers:{},addEventListener(type,handler){this.handlers[type]=handler;},removeEventListener(type){delete this.handlers[type];},devicePixelRatio:1,ResizeObserver:class{constructor(callback){resize=callback;}observe(){}disconnect(){}},...environment})});
+ for(const node of Object.values(nodes))node.ownerDocument=doc;
  const root={...element(),id:'test-cutaway',ownerDocument:doc,querySelector(selector){return nodes[selector.match(/"([^"]+)"/)[1]];}};
  return {component:H.create(root,options),root,nodes,labels,strokes,texts,fills,doc,box,resize:()=>resize?.(),draws:()=>draws,clear(){labels.length=0;strokes.length=0;texts.length=0;fills.length=0;}};
 }
@@ -566,4 +572,128 @@ test('reduced motion settles immediately and a preference change ends an active 
  assert.equal(v.component.getState().framing.mode,'study-segment');assert.equal(v.clock.pending(),0);
  v.component.setContext({study:null,deformation:null});
  assert.equal(v.component.getState().framing.mode,'whole-path');assert.equal(v.clock.pending(),0);v.component.destroy();
+});
+
+function navigableView(box={width:700,height:330}){
+ let handlers,cancellations=0,destructions=0;
+ const gestures={create(options){handlers=options;return {cancel(){cancellations++;},destroy(){destructions++;}};}};
+ const v=fakeComponent({gestures},box);
+ return {...v,navigation:()=>handlers,cancellations:()=>cancellations,destructions:()=>destructions};
+}
+const closePixel=(a,b,tolerance=1e-8)=>assert.ok(Math.abs(a-b)<tolerance,a+' differs from '+b);
+const passedAxis=v=>v.strokes.find(row=>row.color==='#dff9e9').points;
+
+test('shared touch navigation anchors simultaneous pan and pinch without changing hidden magnification or physical data',()=>{
+ const v=navigableView(),d=data(12),original=JSON.stringify(d);
+ v.component.setContext({active:true,data:d,position:2});
+ const input=v.navigation(),before=passedAxis(v).map(p=>p.slice()),h=v.component.getState().field.h;
+ const from={x:before[1][0],y:before[1][1],span:100},to={x:from.x+70,y:from.y+35,span:200};
+ input.onInput('touch');v.clear();input.onTransform({from,to,factor:.5});
+ const enlarged=passedAxis(v).at(-1),state=v.component.getState();
+ closePixel(enlarged[0],to.x);closePixel(enlarged[1],to.y);
+ assert.equal(state.camera.zoom,2);assert.equal(state.gain,1);assert.equal(state.field.h,h);
+ assert.equal(JSON.stringify(d),original);assert.match(v.nodes.canvas.attributes['aria-label'],/two fingers pan and pinch/);
+ v.clear();input.onTransform({from:to,to:from,factor:2});
+ const returned=passedAxis(v);for(let i=0;i<2;i++)for(let k=0;k<2;k++)closePixel(returned[i][k],before[i][k]);
+ assert.equal(v.component.getState().camera.zoom,1);v.component.destroy();assert.equal(v.destructions(),1);
+});
+
+test('hidden camera navigation crosses both end-on poles and reaches inverted views without singular projections',()=>{
+ const v=navigableView(),d=data(12);v.component.setContext({active:true,data:d,position:2});
+ const initial=v.component.getState().camera.tilt,input=v.navigation(),axis=passedAxis(v);
+ assert.ok(axis[0][0]<axis[1][0]);
+ v.clear();input.onRotate({dx:0,dy:Math.PI/.008,pointerType:'touch'});
+ const inverted=passedAxis(v);assert.ok(inverted[0][0]>inverted[1][0],'The audience can view the full reversed longitudinal direction.');
+ const setTilt=value=>{const current=v.component.getState().camera.tilt;v.clear();input.onRotate({dx:0,dy:(value-current)/.008,pointerType:'touch'});};
+ for(const pole of [-Math.PI/2,Math.PI/2]){
+  setTilt(pole-1e-8);const before=passedAxis(v).map(p=>p.slice());
+  setTilt(pole+1e-8);const after=passedAxis(v);
+  for(let i=0;i<2;i++)for(let k=0;k<2;k++)closePixel(after[i][k],before[i][k],.001);
+  assert.ok(v.strokes.every(row=>row.points.every(p=>p.every(Number.isFinite))));
+ }
+ setTilt(initial);const restored=passedAxis(v);for(let i=0;i<2;i++)for(let k=0;k<2;k++)closePixel(restored[i][k],axis[i][k]);
+ v.component.destroy();
+});
+
+test('double-tap focus recenters a picked cutaway point and retains it through rotation; background fits without altering field gain',()=>{
+ const v=navigableView(),d=data(12);v.component.setContext({active:true,data:d,position:2});
+ v.nodes.gain.value='150';v.nodes.gain.handlers.input();
+ const input=v.navigation(),tip=passedAxis(v).at(-1),position={x:tip[0],y:tip[1],pointerType:'touch'};
+ v.clear();input.onFocus(position);
+ closePixel(v.component.getState().camera.focus.s,2);
+ closePixel(passedAxis(v).at(-1)[0],350);closePixel(passedAxis(v).at(-1)[1],166);
+ v.clear();input.onRotate({dx:130,dy:340,pointerType:'touch'});
+ closePixel(passedAxis(v).at(-1)[0],350);closePixel(passedAxis(v).at(-1)[1],166);
+ v.clear();input.onTransform({from:{x:350,y:166},to:{x:400,y:200},factor:.5});
+ const chosen=v.component.getState().camera;assert.equal(chosen.zoom,2);assert.notDeepEqual(chosen.pan,[0,0]);
+ const points=v.strokes.flatMap(row=>row.points);let blank=null,clearance=0;
+ for(let x=5;x<700;x+=35)for(let y=5;y<330;y+=35){const distance=Math.min(...points.map(p=>Math.hypot(x-p[0],y-p[1])));
+  if(distance>clearance){clearance=distance;blank={x,y,pointerType:'touch'};}}
+ assert.ok(clearance>32,'The test double-taps a genuinely empty part of the pane.');
+ v.clear();input.onFocus(blank);
+ const fitted=v.component.getState();assert.equal(fitted.camera.focus,null);assert.equal(fitted.camera.zoom,1);
+ assert.deepEqual(fitted.camera.pan,[0,0]);assert.equal(fitted.gain,1.5);assert.equal(fitted.camera.spin,chosen.spin);assert.equal(fitted.camera.tilt,chosen.tilt);
+ v.nodes.reset.handlers.click();const reset=v.component.getState();assert.equal(reset.gain,1);assert.equal(reset.camera.focus,null);
+ assert.equal(reset.camera.zoom,1);assert.deepEqual(reset.camera.pan,[0,0]);assert.equal(reset.camera.spin,-.75);assert.equal(reset.camera.tilt,.66);
+ v.component.destroy();
+});
+
+test('cutaway camera framing survives resize and close-up navigation always permits zooming out',()=>{
+ const box={width:700,height:330},v=navigableView(box),d=data(12);v.component.setContext({active:true,data:d,position:2});
+ const input=v.navigation(),from={x:350,y:166},to={x:400,y:200};
+ input.onTransform({from,to,factor:1e-9});const close=v.component.getState();assert.equal(close.camera.zoom,64);
+ v.clear();input.onTransform({from:to,to,factor:2});assert.equal(v.component.getState().camera.zoom,32,'Outward navigation works after the close-up limit.');
+ const pan=v.component.getState().camera.pan.slice();box.width=1000;box.height=700;v.resize();
+ assert.deepEqual(v.component.getState().camera.pan,pan);assert.equal(v.component.getState().camera.zoom,32);assert.equal(v.component.getState().gain,1);
+ const before=v.cancellations();v.component.setContext({active:false});assert.ok(v.cancellations()>before);
+ const idle=v.draws();input.onRotate({dx:10,dy:10});input.onTransform({from,to,factor:2});assert.equal(v.draws(),idle);
+ v.component.destroy();assert.equal(v.destructions(),1);
+});
+
+test('close-up focus picks visible line interiors between widely separated sample vertices without fitting the view away',()=>{
+ for(const finite of [false,true]){
+  const v=navigableView(),d=data(12),packet={type:'hidden',T:6,samples:[{s:0,y:[0,0]},{s:3,y:[.06,0]},{s:6,y:[0,0]}]};
+  v.component.setContext({active:true,data:d,position:2,...(finite?{deformation:packet}:{})});
+  const input=v.navigation(),pick=finite?v.strokes.filter(row=>row.color==='#6de8ff')[0].points.at(-1):passedAxis(v).at(-1);
+  input.onFocus({x:pick[0],y:pick[1]});v.clear();
+  input.onTransform({from:{x:350,y:168},to:{x:350,y:168},factor:1e-9});
+  const state=v.component.getState(),line=finite?v.strokes.filter(row=>row.color==='#6de8ff').at(-1).points:
+   v.strokes.find(row=>row.color==='#a7d8cb70').points;
+  const t=finite?.005:2.025/12,spot={x:interpolatePixel(line[0][0],line[1][0],t),y:interpolatePixel(line[0][1],line[1][1],t)};
+  assert.ok(spot.x>0&&spot.x<700&&spot.y>0&&spot.y<330,'The target lies on a visible line interior.');
+  if(finite)assert.ok(Math.hypot(spot.x-line[0][0],spot.y-line[0][1])>32,'The visible finite-curve point is far from its sample vertices.');
+  v.clear();input.onFocus(spot);const focused=v.component.getState();
+  assert.equal(focused.camera.zoom,64,'A visible line must focus rather than being mistaken for blank space and fitting all.');
+  closePixel(focused.camera.focus.s,finite?3.015:2.025);assert.equal(focused.gain,state.gain);
+  assert.equal(JSON.stringify(d),JSON.stringify(data(12)));v.component.destroy();
+ }
+});
+const interpolatePixel=(a,b,t)=>a+(b-a)*t;
+
+test('the real multi-pointer controller pans and pinches the cutaway and yields to a Pencil operating its controls',()=>{
+ const gestures=require('./camera-gestures.js'),v=fakeComponent({gestures}),d=data(12),source=JSON.stringify(d);
+ v.component.setContext({active:true,data:d,position:2});let clock=0;
+ const pointer=(type,id,x,y,extra={})=>{
+  const event={type,target:v.nodes.canvas,pointerType:'touch',pointerId:id,clientX:x,clientY:y,button:0,buttons:1,
+   isPrimary:id===1,timeStamp:clock+=20,cancelable:true,preventDefault(){this.prevented=true;},...extra};
+  if(type==='pointerdown'){v.doc.handlers.pointerdown?.(event);if(event.target===v.nodes.canvas)v.nodes.canvas.handlers.pointerdown(event);}
+  else v.doc.defaultView.handlers[type]?.(event);
+  return event;
+ };
+ pointer('pointerdown',1,100,100);pointer('pointermove',1,110,100);
+ const first=v.component.getState().camera;pointer('pointerdown',2,200,100);
+ assert.deepEqual(v.component.getState().camera,first,'A second finger starts from the existing pose.');
+ pointer('pointermove',1,100,100);assert.ok(v.component.getState().camera.zoom>1);
+ assert.equal(v.component.getState().gain,1);assert.equal(v.component.getState().field.h,J.hiddenValue(2,c));
+ pointer('pointerup',2,200,100);const settled=v.component.getState().camera;
+ pointer('pointermove',1,100,100);assert.deepEqual(v.component.getState().camera,settled,'Lifting one finger cannot jump the remaining drag.');
+ const pen=pointer('pointerdown',7,100,200,{pointerType:'pen',target:v.nodes.gain,isPrimary:true});
+ assert.equal(pen.prevented,undefined,'Pencil contacts on ordinary controls keep their native behavior.');
+ const beforePalm=v.component.getState().camera;pointer('pointermove',1,130,150);
+ assert.deepEqual(v.component.getState().camera,beforePalm,'A resting finger cannot move the camera while the Pencil controls magnification.');
+ pointer('pointerup',7,100,200,{pointerType:'pen',target:v.nodes.gain});pointer('pointermove',1,150,170);
+ assert.deepEqual(v.component.getState().camera,beforePalm,'An old palm contact cannot resume a camera drag after Pencil release.');
+ pointer('pointerdown',3,150,170);pointer('pointermove',3,160,180);
+ assert.notEqual(v.component.getState().camera.spin,beforePalm.spin,'Fresh intentional touch works after Pencil use.');
+ assert.equal(JSON.stringify(d),source);v.component.destroy();assert.equal(v.doc.defaultView.handlers.pointermove,undefined);
 });

@@ -54,12 +54,16 @@
     // back) would vanish at a pole and reverse horizontal direction past it.
     const right=[cy,sy,0],up=cross(back,right);
     const fit=fitDistance(bounds,center,back,right,up,aspect);
-    const distance=fit*c.zoom,target=add(center,c.targetOffset),eye=add(target,scale(back,distance));
+    // Close-up orbit distance must not change when the bounding box presents
+    // a different silhouette, or a focused point could cross the near plane
+    // merely because the audience rotated underneath it.
+    const zoomScale=c.localFocus&&Number.isFinite(c.localFit)&&c.localFit>0?c.localFit:fit;
+    const distance=zoomScale*c.zoom,target=add(center,c.targetOffset),eye=add(target,scale(back,distance));
     const view=new Float32Array([right[0],up[0],back[0],0,right[1],up[1],back[1],0,right[2],up[2],back[2],0,
       -dot(right,eye),-dot(up,eye),-dot(back,eye),1]);
     const near=.05,far=Math.max(50,distance+radius*4+norm(c.targetOffset)*2),f=1/TAN_HALF;
     const projection=new Float32Array([f/aspect,0,0,0,0,f,0,0,0,0,(far+near)/(near-far),-1,0,0,2*far*near/(near-far),0]);
-    return {m:multiply(projection,view),eye,target,center,right,up,back,distance,fit,radius,near,far,aspect,width:w,height:h,bounds:bounds.map(p=>p.slice())};
+    return {m:multiply(projection,view),eye,target,center,right,up,back,distance,fit,zoomScale,radius,near,far,aspect,width:w,height:h,bounds:bounds.map(p=>p.slice())};
   }
   function project(f,point,width=f.width,height=f.height){
     const v=sub(point,f.eye),depth=-dot(v,f.back);
@@ -127,17 +131,22 @@
     // all bounds from the CURRENT target and orientation. Never turn an
     // outward request into an inward jump if the current view is already wide.
     const targetFit=fitDistance(bounds,f.target,f.back,f.right,f.up,f.aspect);
-    const maximum=Math.max(MAX_ZOOM,MAX_ZOOM*(targetFit/f.fit),c.zoom);
-    let zoom=clamp(c.zoom*factor,MIN_ZOOM,maximum);
+    const relativeFit=f.fit/f.zoomScale;
+    const maximum=Math.max(MAX_ZOOM*relativeFit,MAX_ZOOM*(targetFit/f.fit)*relativeFit,c.zoom);
+    // A touch focus uses a local distance, rather than a fraction of the
+    // entire connected sum. Keep +/- and wheel input continuous after such a
+    // close-up while retaining the ordinary desktop zoom range otherwise.
+    const minimum=c.localFocus?f.near/f.zoomScale:MIN_ZOOM;
+    let zoom=clamp(c.zoom*factor,minimum,maximum);
     if(zoom===c.zoom)return c;
     const cursorX=x??f.width/2,cursorY=y??f.height/2;
-    let delta=f.fit*(zoom-c.zoom);
+    let delta=f.zoomScale*(zoom-c.zoom);
     if(delta<0&&model){
       const anchor=anchorAt(f,cursorX,cursorY,model);
       if(anchor.hit){
         const depth=-dot(sub(anchor.point,f.eye),f.back);
         const limitedDelta=Math.min(0,Math.max(delta,f.near-depth));
-        if(limitedDelta>delta){delta=limitedDelta;zoom=c.zoom+delta/f.fit;}
+        if(limitedDelta>delta){delta=limitedDelta;zoom=c.zoom+delta/f.zoomScale;}
       }
     }
     // An eye translation along this ray preserves the pixel of every point
@@ -149,9 +158,52 @@
     const target=add(f.target,pan);
     return {...c,zoom,targetOffset:sub(target,f.center)};
   }
+  function panScreen({bounds,camera,width,height,dx=0,dy=0,depth}){
+    const c=normalize(camera),f=frame(bounds,c,width,height);
+    const d=Number.isFinite(depth)&&depth>0?Math.max(f.near,depth):f.distance;
+    const x=Number.isFinite(dx)?dx:0,y=Number.isFinite(dy)?dy:0;
+    const shift=add(scale(f.right,-2*d*TAN_HALF*f.aspect*x/f.width),scale(f.up,2*d*TAN_HALF*y/f.height));
+    return {...c,targetOffset:add(c.targetOffset,shift)};
+  }
+  function touchTransform({bounds,camera,width,height,from,to,factor,model}){
+    const c=normalize(camera);
+    if(!from||!to||![from.x,from.y,to.x,to.y].every(Number.isFinite))return c;
+    const ratio=factor===undefined&&from.span>0&&to.span>0?from.span/to.span:factor;
+    if(!(ratio>0)||!Number.isFinite(ratio))return c;
+    const f=frame(bounds,c,width,height),anchor=anchorAt(f,from.x,from.y,model);
+    const depth=Math.max(f.near,-dot(sub(anchor.point,f.eye),f.back));
+    // Rebase the orbit depth onto the picked surface (or the existing target
+    // plane over empty space). This leaves the eye unchanged before the
+    // gesture, and makes a pinch scale the actual neighborhood under the
+    // fingers instead of a distance measured from the whole model's center.
+    const planeTarget=sub(f.eye,scale(f.back,depth));
+    const targetFit=fitDistance(bounds,planeTarget,f.back,f.right,f.up,f.aspect);
+    const maximum=Math.max(MAX_ZOOM,MAX_ZOOM*(targetFit/f.fit),depth/f.fit);
+    const nextDepth=clamp(depth*ratio,f.near,f.fit*maximum);
+    const qx=(clamp(to.x,0,f.width)/f.width*2-1)*TAN_HALF*f.aspect;
+    const qy=(1-clamp(to.y,0,f.height)/f.height*2)*TAN_HALF;
+    const target=sub(sub(anchor.point,scale(f.right,qx*nextDepth)),scale(f.up,qy*nextDepth));
+    // The same world point now appears at the new finger midpoint. Depth is
+    // positive even at the inward limit; an outward request can always retreat
+    // until the entire model fits from the current displaced target.
+    return {...c,zoom:nextDepth/f.fit,targetOffset:sub(target,f.center),localFocus:true,localFit:f.fit};
+  }
+  function focusAt({bounds,camera,width,height,x,y,model}){
+    const c=normalize(camera),f=frame(bounds,c,width,height),anchor=anchorAt(f,x,y,model);
+    if(!anchor.hit)return c;
+    const depth=Math.max(f.near,-dot(sub(anchor.point,f.eye),f.back));
+    // Center the picked point without changing orientation or its local
+    // apparent scale. The caller may interpolate to this camera for a smooth
+    // focus transition.
+    return {...c,zoom:depth/f.fit,targetOffset:sub(anchor.point,f.center),localFocus:true,localFit:f.fit};
+  }
+  function fitAll({camera}){
+    const {localFit,...c}=normalize(camera);
+    return {...c,zoom:1,targetOffset:[0,0,0],localFocus:false};
+  }
   function turn(camera,deltaYaw=0,deltaPitch=0){
     const c=normalize(camera);
     return {...c,yaw:wrap(c.yaw+(Number.isFinite(deltaYaw)?deltaYaw:0)),pitch:wrap(c.pitch+(Number.isFinite(deltaPitch)?deltaPitch:0))};
   }
-  return {defaultCamera,frame,project,rayFromScreen,anchorAt,zoomAt,turn,MIN_ZOOM,MAX_ZOOM};
+  return {defaultCamera,frame,project,rayFromScreen,anchorAt,zoomAt,panScreen,touchTransform,focusAt,fitAll,turn,MIN_ZOOM,MAX_ZOOM};
 });

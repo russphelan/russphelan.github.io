@@ -11,14 +11,27 @@
   'use strict';
   const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
   const smooth=x=>{const t=clamp(x,0,1);return t*t*(3-2*t);};
-  function cameraAt(from,to,geometry){
+  function cameraAt(from,to,geometry,framing={}){
     const amount=smooth(geometry/.12);
     if(amount===0)return from;if(amount===1)return to;
     const angle=(a,b)=>a+Math.atan2(Math.sin(b-a),Math.cos(b-a))*amount;
     const start=from.targetOffset||[0,0,0],end=to.targetOffset||[0,0,0];
-    return {...to,yaw:angle(from.yaw,to.yaw),pitch:angle(from.pitch,to.pitch),
+    const camera={...to,yaw:angle(from.yaw,to.yaw),pitch:angle(from.pitch,to.pitch),
       zoom:Math.exp(Math.log(from.zoom)*(1-amount)+Math.log(to.zoom)*amount),
       targetOffset:start.map((v,i)=>v+(end[i]-v)*amount)};
+    const positive=value=>Number.isFinite(value)&&value>0;
+    const localFrom=from.localFocus&&positive(from.localFit),localTo=to.localFocus&&positive(to.localFit);
+    if(localFrom||localTo){
+      // Local close-ups measure their zoom against a fixed reference distance.
+      // Keep that reference during staging instead of dropping it on the
+      // first geometry frame. The renderer supplies the current destination
+      // fit, accounting for the bounds changing as the next summand appears.
+      const fit=positive(framing.fit)?framing.fit:localFrom?from.localFit:to.localFit;
+      const startFit=localFrom?from.localFit:fit,endFit=localTo?to.localFit:fit;
+      camera.localFocus=true;
+      camera.localFit=Math.exp(Math.log(startFit)*(1-amount)+Math.log(endFit)*amount);
+    }
+    return camera;
   }
   function create({durationMs=16000,surfaceVisible=true,wire=false,surfaceOpacity=.55,fadeMs=650}={}){
     if(!(durationMs>0)||!Number.isFinite(durationMs)||!(fadeMs>=0)||!Number.isFinite(fadeMs))throw RangeError('Finite positive construction duration and nonnegative fade duration required.');

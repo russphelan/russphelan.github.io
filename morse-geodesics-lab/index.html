@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#f6f3ec">
-  <meta name="offline-release" content="3f95dc770cfbd0dfdf76">
+  <meta name="offline-release" content="563fa9c09c92b963266a">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Geodesics">
   <link rel="manifest" href="./manifest.webmanifest">
@@ -20,6 +20,7 @@
   <link rel="stylesheet" href="./neck-explanation.css?v=neck-linked-views-2">
   <link rel="stylesheet" href="./offline-install.css?v=offline-1">
   <link rel="stylesheet" href="./tablet-controls.css?v=ipad-touch-1">
+  <link rel="stylesheet" href="./camera-navigation.css?v=touch-navigation-1">
   <script defer src="./offline-install.js?v=offline-1"></script>
   <script defer src="./compact-collar.js?v=surface-traversal-1"></script>
   <script defer src="./surface.js?v=surface-traversal-1"></script>
@@ -31,13 +32,15 @@
   <script defer src="./jacobi-explanation.js?v=ribbon-cutaway-layout-1"></script>
   <script defer src="./theorem.js"></script>
   <script defer src="./view-modes.js"></script>
-  <script defer src="./camera.js?v=mouse-zoom-recovery-1"></script>
+  <script defer src="./camera.js?v=touch-navigation-1"></script>
+  <script defer src="./camera-gestures.js?v=touch-navigation-1"></script>
+  <script defer src="./surface-camera-controls.js?v=touch-navigation-1"></script>
   <script defer src="./ambient-explorer.js?v=stability-pass-1"></script>
-  <script defer src="./hidden-cutaway.js?v=live-hidden-1"></script>
+  <script defer src="./hidden-cutaway.js?v=touch-navigation-1"></script>
   <script defer src="./traversal-hold.js?v=traversal-focus-fix-1"></script>
   <script defer src="./surgery.js?v=compact-collar-3"></script>
   <script defer src="./surgery-preparation.js?v=compact-collar-3"></script>
-  <script defer src="./surgery-motion.js?v=compact-collar-3"></script>
+  <script defer src="./surgery-motion.js?v=touch-navigation-1"></script>
   <script defer src="./neck-explanation-math.js?v=compact-collar-3"></script>
   <script defer src="./neck-explanation.js?v=compact-collar-3"></script>
   <script defer src="./starter-data.js?v=compact-collar-3"></script>
@@ -65,7 +68,7 @@
   <script defer src="./neck-view-resize.js?v=neck-resize-5"></script>
   <script defer src="./jacobi-graph-scale.js?v=graph-zoom-1"></script>
   <script defer src="./surface-traversal.js?v=live-hidden-1"></script>
-  <script defer src="./app.js?v=surface-deep-1"></script>
+  <script defer src="./app.js?v=touch-navigation-1"></script>
 </head>
 <body>
   <a class="skip-link" href="#experiment-controls">Skip to experiment controls</a>
@@ -132,12 +135,15 @@
             <p id="presentation-caption" class="presentation-caption" role="status" aria-live="polite" hidden></p>
             <p id="downhill-scene-note" class="downhill-scene-note" hidden></p>
             <span id="neck-main-marker" class="neck-main-marker" hidden aria-hidden="true"></span>
+            <span id="camera-focus" class="camera-focus" hidden aria-hidden="true"><span>Camera focus</span></span>
             <div class="scene-toolbar" role="group" aria-label="Camera controls">
               <button type="button" id="rotate-left" title="Rotate left" aria-label="Rotate left">↶</button>
               <button type="button" id="rotate-right" title="Rotate right" aria-label="Rotate right">↷</button>
               <span class="toolbar-divider" aria-hidden="true"></span>
               <button type="button" id="zoom-out" title="Zoom out" aria-label="Zoom out">−</button>
               <button type="button" id="zoom-in" title="Zoom in" aria-label="Zoom in">+</button>
+              <select id="camera-view" class="camera-view" aria-label="Camera view"><option value="">Views…</option><option value="top">Top</option><option value="bottom">Bottom</option></select>
+              <button type="button" id="fit-camera" class="camera-fit" title="Fit the entire surface without changing its orientation">Fit all</button>
               <button type="button" id="reset-camera" class="reset-camera">Reset view</button>
             </div>
           <span id="surgery-controls-home" hidden></span>

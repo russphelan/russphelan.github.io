@@ -43,7 +43,7 @@
       if(targetWire)surgeryWires.set(plan.toId,targetWire);
     }
   });
-  let frame=0, lastTime=0, dragging=null,surfaceTraversal=null;
+  let frame=0, lastTime=0,surfaceTraversal=null,surfaceCameraControls=null;
   let neckViewer=null,neckResize=null,lastCompletedNeck=null,neckScene=null,neckOverlayPlan=null;
   const neckSections=new WeakMap(),neckOverlayGPU=new Map();
   let reveal=null,explorationSnapshot=null,showcaseReturn=null;
@@ -461,10 +461,10 @@
     return bounds;
   }
   function cameraMatrix() {
-    const operation=state.surgery;
-    const camera=operation?SurgeryMotion.cameraAt(operation.snapshot.camera,state.camera,
-      operation.motion.sample(operation.progress).geometry):state.camera;
-    return Camera.frame(currentBounds(),camera,cssW,cssH);
+    const operation=state.surgery,bounds=currentBounds();
+    const camera=operation&&!operation.manualCamera?SurgeryMotion.cameraAt(operation.snapshot.camera,state.camera,
+      operation.motion.sample(operation.progress).geometry,{fit:Camera.frame(bounds,state.camera,cssW,cssH).fit}):state.camera;
+    return Camera.frame(bounds,camera,cssW,cssH);
   }
   function screenPoint(point) {
     const p=[...point,1],o=[0,0,0,0];
@@ -1007,7 +1007,7 @@
     downhillControls.setContext(studyContext);
     syncDownhillLayout();
     updateNeckExplanation();
-    resize();const camera=cameraMatrix();matrix=camera.m;
+    resize();const camera=cameraMatrix();matrix=camera.m;surfaceCameraControls?.sync();
     const cameraState=JSON.stringify(state.camera);
     if(canvas.dataset.camera!==cameraState)canvas.dataset.camera=cameraState;
     const paths=Views.layout(state.viewMode,visible(),state.selected).paths;
@@ -1704,35 +1704,20 @@
     state.surfaceOpacity=clamp(Number($('surface-opacity').value)/100,.1,1);
     $('surface-opacity-value').textContent=Math.round(state.surfaceOpacity*100)+'%';requestDraw();
   });
-  function cameraChange(yaw,pitch,zoom=1){
-    state.camera=Camera.turn(state.camera,yaw,pitch);
-    if(zoom!==1)state.camera=Camera.zoomAt({bounds:currentBounds(),camera:state.camera,width:cssW,height:cssH,x:cssW/2,y:cssH/2,factor:zoom});
-    requestDraw();
-  }
-  $('reset-camera').addEventListener('click',()=>{state.camera=Camera.defaultCamera();requestDraw();});
-  $('rotate-left').addEventListener('click',()=>cameraChange(-.18,0));$('rotate-right').addEventListener('click',()=>cameraChange(.18,0));
-  $('zoom-in').addEventListener('click',()=>cameraChange(0,0,.9));$('zoom-out').addEventListener('click',()=>cameraChange(0,0,1/.9));
-  canvas.addEventListener('pointerdown',e=>{if(e.button!==0||e.isPrimary===false||dragging)return;dragging={id:e.pointerId,x:e.clientX,y:e.clientY};canvas.setPointerCapture(e.pointerId);});
-  canvas.addEventListener('pointermove',e=>{if(!dragging||dragging.id!==e.pointerId)return;if(e.buttons===0){dragging=null;return;}cameraChange((e.clientX-dragging.x)*.007,-(e.clientY-dragging.y)*.007);dragging.x=e.clientX;dragging.y=e.clientY;});
-  for(const type of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(type,e=>{if(dragging?.id===e.pointerId)dragging=null;});
-  window.addEventListener('blur',()=>{dragging=null;});
-  $('scene-stage').addEventListener('wheel',e=>{
-    if(e.target.closest('.scene-toolbar,.surgery-controls'))return;
-    e.preventDefault();
-    const box=canvas.getBoundingClientRect(),delta=e.deltaY*(e.deltaMode===1?16:e.deltaMode===2?box.height:1);
-    state.camera=Camera.zoomAt({bounds:currentBounds(),camera:state.camera,width:box.width,height:box.height,
-      x:e.clientX-box.left,y:e.clientY-box.top,factor:Math.exp(clamp(delta,-300,300)*.001),model:state.surgery?null:model()});
-    requestDraw();
-  },{passive:false});
-  canvas.addEventListener('keydown',e=>{
-    const actions={ArrowLeft:[-.12,0],ArrowRight:[.12,0],ArrowUp:[0,.1],ArrowDown:[0,-.1],'+':[0,0,.9],'=':[0,0,.9],'-':[0,0,1/.9]};
-    if(actions[e.key]){e.preventDefault();cameraChange(...actions[e.key]);}
-    if(e.key==='Home'){e.preventDefault();state.camera=Camera.defaultCamera();requestDraw();}
+  surfaceCameraControls=window.GeodesicSurfaceCameraControls.create({canvas,stage:$('scene-stage'),help:$('camera-help'),marker:$('camera-focus'),
+    buttons:{left:$('rotate-left'),right:$('rotate-right'),in:$('zoom-in'),out:$('zoom-out'),reset:$('reset-camera'),fit:$('fit-camera'),view:$('camera-view')},
+    getScene:()=>({camera:state.camera,bounds:currentBounds(),model:state.surgery?null:model()}),
+    onChange:camera=>{state.camera=camera;requestDraw();},
+    onBegin:()=>{
+      const operation=state.surgery;if(!operation)return;
+      if(!operation.manualCamera){state.camera=SurgeryMotion.cameraAt(operation.snapshot.camera,state.camera,operation.motion.sample(operation.progress).geometry,{fit:Camera.frame(currentBounds(),state.camera,cssW,cssH).fit});operation.manualCamera=true;}
+      operation.paused=true;lastTime=0;updateSurgeryUI();
+    }
   });
   canvas.addEventListener('webglcontextlost',e=>{e.preventDefault();cancelSurfaceTraversal();contextLost=true;pauseReveal();if(state.surgery){state.surgery.paused=true;updateSurgeryUI();}$('search-status').textContent='Graphics paused; waiting for the rendering context to recover.';});
   canvas.addEventListener('webglcontextrestored',()=>{contextLost=false;initGL();requestDraw();});
-  document.addEventListener('visibilitychange',()=>{searchManager?.block('hidden page',document.hidden);downhillPreparation.block('hidden page',document.hidden);if(document.hidden){cancelSurfaceTraversal();neckResize?.setContext({active:false});neckViewer?.setContext({active:false});cancelSurgeryWarmup();dragging=null;pauseReveal();ambientExplorer.setContext({active:false});hiddenCutaway.setContext({active:false});state.playing=false;if(state.surgery){state.surgery.paused=true;updateSurgeryUI();}if(frame)cancelAnimationFrame(frame);frame=0;lastTime=0;updateCatalogue();}else{requestDraw();warmNextSurgery();}});
-  window.addEventListener('pagehide',()=>{searchManager?.block('hidden page',true);downhillPreparation.block('hidden page',true);cancelSurfaceTraversal();cancelSurgeryWarmup();surgeryPreparation.cancelPending();dragging=null;pauseReveal();ambientExplorer.setContext({active:false});hiddenCutaway.setContext({active:false});if(state.surgery)cancelSurgery();if(frame)cancelAnimationFrame(frame);frame=0;lastTime=0;state.playing=false;stopSearch();searchManager?.flush();});
+  document.addEventListener('visibilitychange',()=>{searchManager?.block('hidden page',document.hidden);downhillPreparation.block('hidden page',document.hidden);if(document.hidden){cancelSurfaceTraversal();neckResize?.setContext({active:false});neckViewer?.setContext({active:false});cancelSurgeryWarmup();pauseReveal();ambientExplorer.setContext({active:false});hiddenCutaway.setContext({active:false});state.playing=false;if(state.surgery){state.surgery.paused=true;updateSurgeryUI();}if(frame)cancelAnimationFrame(frame);frame=0;lastTime=0;updateCatalogue();}else{requestDraw();warmNextSurgery();}});
+  window.addEventListener('pagehide',()=>{searchManager?.block('hidden page',true);downhillPreparation.block('hidden page',true);cancelSurfaceTraversal();cancelSurgeryWarmup();surgeryPreparation.cancelPending();pauseReveal();ambientExplorer.setContext({active:false});hiddenCutaway.setContext({active:false});if(state.surgery)cancelSurgery();if(frame)cancelAnimationFrame(frame);frame=0;lastTime=0;state.playing=false;stopSearch();searchManager?.flush();});
   window.addEventListener('pageshow',()=>{searchManager?.block('hidden page',document.hidden);downhillPreparation.block('hidden page',document.hidden);if(state.mode==='explore'&&!state.surgery)searchManager?.activate(searchConfig());requestDraw();warmNextSurgery();});
   $('jacobi').closest('details').addEventListener('toggle',requestDraw);
   for(const [k,name]of ['surface','hidden-one','hidden-two'].entries())$('graph-zoom-'+name).addEventListener('input',()=>{

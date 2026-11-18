@@ -76,3 +76,44 @@ test('camera adjustments during construction use the short orbit arc and stay re
  assert.ok(Math.abs(halfway.yaw-Math.PI)<1e-12,'Never spin through a full turn when an orbit crosses its wrap.');
  assert.equal(Motion.cameraAt(from,to,.5),to);
 });
+
+test('local focus staging interpolates physical distance and returns the exact ordinary camera at the end',()=>{
+ const Camera=require('./camera.js');
+ const initialBounds=[[-4,-4,-1],[4,4,1]],grownBounds=[[-5,-4,-1],[8,4,1]],
+  boundsAt=t=>initialBounds.map((point,i)=>point.map((v,j)=>v+(grownBounds[i][j]-v)*t));
+ const from={yaw:.6,pitch:-2.4,zoom:.008,targetOffset:[2,-1,.4],localFocus:true,localFit:31},
+  to={yaw:from.yaw,pitch:from.pitch,zoom:.9,targetOffset:[0,0,0]},before=JSON.stringify([from,to]);
+ const current=t=>{const bounds=boundsAt(t),fit=Camera.frame(bounds,to,1024,700).fit;
+  return {bounds,fit,camera:Motion.cameraAt(from,to,t,{fit})};};
+ assert.equal(current(0).camera,from);assert.equal(current(.12).camera,to);
+ for(const t of [.000001,.03,.06,.09,.119999]){
+  const {bounds,fit,camera}=current(t),u=t/.12,amount=u*u*(3-2*u);
+  const expected=Math.exp(Math.log(from.zoom*from.localFit)*(1-amount)+Math.log(to.zoom*fit)*amount);
+  assert.equal(camera.localFocus,true);assert.ok(Number.isFinite(camera.localFit)&&camera.localFit>0);
+  assert.ok(Math.abs(Camera.frame(bounds,camera,1024,700).distance-expected)<1e-10);
+ }
+ const atStart=current(0),nearStart=current(1e-8),atEnd=current(.12),nearEnd=current(.12-1e-8);
+ const startFrame=Camera.frame(atStart.bounds,atStart.camera,1024,700),nextFrame=Camera.frame(nearStart.bounds,nearStart.camera,1024,700),
+  endFrame=Camera.frame(atEnd.bounds,atEnd.camera,1024,700),previousFrame=Camera.frame(nearEnd.bounds,nearEnd.camera,1024,700);
+ for(const [a,b]of [[startFrame,nextFrame],[previousFrame,endFrame]]){
+  assert.ok(Math.abs(a.distance-b.distance)<1e-5);
+  assert.ok(Math.hypot(...a.eye.map((v,i)=>v-b.eye[i]))<1e-5,'Staging cannot jump at a local/ordinary camera boundary.');
+ }
+ assert.equal(atEnd.camera.localFocus,undefined);assert.equal(atEnd.camera.localFit,undefined);
+ assert.equal(JSON.stringify([from,to]),before);
+});
+
+test('ordinary desktop staging is unchanged by the optional local-focus fit context',()=>{
+ const from={yaw:2.8,pitch:.3,zoom:.4,targetOffset:[3,-2,1]},to={yaw:-2.9,pitch:-.8,zoom:.9,targetOffset:[0,0,0]};
+ for(const t of [0,.001,.03,.06,.119,.12,.5]){
+  assert.deepEqual(Motion.cameraAt(from,to,t,{fit:37}),Motion.cameraAt(from,to,t));
+ }
+});
+
+test('staging between two local cameras preserves both distance references',()=>{
+ const from={yaw:.6,pitch:-2.4,zoom:.008,targetOffset:[2,-1,.4],localFocus:true,localFit:31},
+  to={yaw:.6,pitch:-2.4,zoom:.02,targetOffset:[0,0,0],localFocus:true,localFit:12};
+ const halfway=Motion.cameraAt(from,to,.06,{fit:99});
+ assert.ok(Math.abs(halfway.zoom*halfway.localFit-Math.sqrt(from.zoom*from.localFit*to.zoom*to.localFit))<1e-12);
+ assert.equal(Motion.cameraAt(from,to,.12,{fit:99}),to);
+});

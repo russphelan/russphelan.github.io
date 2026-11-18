@@ -28,6 +28,15 @@ catalogue, and app scripts.
 
 ## Offline installation on iPad
 
+The 3D surface and hidden view automatically accept touch navigation: drag with
+one finger to rotate through all orientations, use two fingers to pan and pinch
+simultaneously, and double-tap a visible neighborhood to focus rotation there.
+The surface's **Views → Bottom** shortcut shows the underside; **Fit all** brings
+the whole surface back without changing its orientation. Pencil input remains
+available for precise controls, and mouse/trackpad navigation remains available
+in the same session. Camera zoom in the hidden view is separate from the field's
+mathematical magnification slider.
+
 Open the public HTTPS app and expand **Install & use offline** at the bottom.
 Choose **Save for offline use**, keep the page open, and wait for **Ready offline**.
 The approximately 47 MB download includes every runtime file, both background
