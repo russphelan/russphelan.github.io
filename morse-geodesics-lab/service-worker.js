@@ -2,7 +2,7 @@
 (function(root,factory){
   'use strict';
   if(typeof module==='object'&&module.exports){module.exports=factory;return;}
-  const RELEASE = '563fa9c09c92b963266a';
+  const RELEASE = 'afaf379ca23fc4b3f337';
   root.importScripts('./offline-assets.js?v='+RELEASE);
   if(root.GeodesicOfflineAssets?.version!==RELEASE)throw Error('The offline release is still updating. Try again shortly.');
   factory(root,root.GeodesicOfflineAssets);

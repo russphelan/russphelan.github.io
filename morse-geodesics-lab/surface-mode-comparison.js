@@ -1,13 +1,19 @@
 /* Two surface Hessian eigenfunctions on one fixed-endpoint segment.
  * Drawing ordinates are the computed coefficient functions, never model sines. */
 (function(root,factory){
-  'use strict';const api=factory();
+  'use strict';const api=factory(()=>typeof module==='object'&&module.exports?require('./downhill-controls.js'):root?.GeodesicDownhillControls);
   if(typeof module==='object'&&module.exports)module.exports=api;
   if(root)root.GeodesicSurfaceModeComparison=api;
-})(typeof globalThis!=='undefined'?globalThis:this,function(){
+})(typeof globalThis!=='undefined'?globalThis:this,function(focusControls){
   'use strict';
   const COLORS=['#c8794d','#8c6c1d'],clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
   const number=x=>Number(x).toExponential(3),percent=x=>x===0?'0%':(x>0?'+':'−')+Math.abs(100*x).toPrecision(3)+'%';
+  function surfaceFocus(data,mode){
+    return focusControls()?.eventChoices(data).find(choice=>choice.type==='surface'&&choice.mode===mode)||null;
+  }
+  function focusBookmark(data,mode,where){
+    return focusControls()?.bookmark(surfaceFocus(data,mode),where,data?.length)??null;
+  }
   function secondSurfaceEnd(data){
     const events=(data?.events||[]).filter(e=>e.surface&&!e.endpoint&&Number.isFinite(e.s)&&e.s>0&&e.s<data.length).sort((a,b)=>a.s-b.s);
     if(events.length<2)return null;
@@ -25,7 +31,7 @@
       <p class="mode-comparison-explanation">Green ribbon: Jacobi field. Colored push patterns: Hessian modes. Switching modes keeps both endpoints fixed.</p>
       <p class="mode-comparison-segment">Torus drawing: 3× push magnification requested for both modes. Length uses the physical push below.</p>
       <p class="mode-comparison-segment" data-mode="segment"></p>
-      <div class="mode-comparison-grid"><div class="mode-comparison-patterns"><div class="mode-comparison-buttons" role="group" aria-label="Surface Hessian mode shown on the torus"><button type="button" data-mode="one" style="--mode-color:${COLORS[0]}">Mode 1</button><button type="button" data-mode="two" style="--mode-color:${COLORS[1]}">Mode 2</button></div>
+      <div class="mode-comparison-grid"><div class="mode-comparison-patterns"><div class="mode-comparison-navigation"><div class="mode-comparison-buttons" role="group" aria-label="Surface Hessian mode shown on the torus"><button type="button" data-mode="one" style="--mode-color:${COLORS[0]}">Mode 1</button><button type="button" data-mode="two" style="--mode-color:${COLORS[1]}">Mode 2</button></div><div class="mode-comparison-focus"><span data-mode="focus-label"></span><div class="mode-comparison-bookmarks" role="group" aria-label="Move the segment endpoint around the selected surface focus"><button type="button" data-mode="before">Before</button><button type="button" data-mode="at">At focus</button><button type="button" data-mode="after">After</button></div></div></div>
       <div data-mode="shapes" class="mode-comparison-shapes"></div><p class="mode-comparison-shape-key">Actual modes f₁(s), f₂(s) · same position axis · max |f| = 1</p>
       <label for="${prefix}push">Same maximum push · signed <output data-mode="amplitude">0.0000</output><input type="range" id="${prefix}push" data-mode="push" min="-100" max="100" step="1" value="0" aria-label="Surface Hessian mode push amplitude"></label>
       <div class="mode-comparison-results"><p data-mode="result-one"></p><p data-mode="result-two"></p></div></div><div data-mode="landscape"></div></div>
@@ -67,6 +73,16 @@
       const ready=usable()&&!pending&&!rangePending&&!error&&profiles.length===2&&cap>0;
       $('past-second').disabled=!usable()||secondSurfaceEnd(context.data)===null;
       for(const [i,name]of ['one','two'].entries()){$(name).disabled=!usable();$(name).setAttribute('aria-pressed',String(mode===i+1));}
+      const focus=surfaceFocus(context.data,mode),label=focus?`Mode ${mode} · +1 focus at ${focus.s.toFixed(3)}`:`Mode ${mode} · no interior +1 focus on this path`;
+      if($('focus-label').textContent!==label)$('focus-label').textContent=label;
+      // Both profiles stay on the same segment. Only these explicit shortcuts
+      // move its endpoint; choosing another mode merely changes which focus
+      // the shortcuts refer to. Nearest matching bookmark avoids ambiguous
+      // highlights when conjugate events are extremely close together.
+      const bookmarks=['before','at','after'].map(where=>({where,s:focusBookmark(context.data,mode,where)}));
+      const nearest=bookmarks.filter(row=>row.s!==null).sort((a,b)=>Math.abs(a.s-T())-Math.abs(b.s-T()))[0];
+      const stage=nearest&&Math.abs(nearest.s-T())<1e-7?nearest.where:null;
+      for(const {where}of bookmarks){$(where).disabled=!usable()||!focus;$(where).setAttribute('aria-pressed',String(stage===where));}
       const sliderLimit=cap||pushLimit;
       $('push').disabled=!ready;$('push').value=maxSign?maxSign*100:sliderLimit?Math.round(100*amplitude/sliderLimit):0;
       $('push').setAttribute('aria-valuetext',amplitude.toFixed(4)+' metric units; same physical amplitude for either mode'+(maxSign?'; maximum requested':''));
@@ -168,6 +184,10 @@
     for(const [i,name]of ['one','two'].entries())listen($(name),'click',()=>{options.onPause?.();mode=i+1;evaluate();if(pending){refresh();emit();}});
     listen($('push'),'input',()=>{if(!usable()||pending||!cap)return;options.onPause?.();const fraction=clamp(Number($('push').value)/100,-1,1);maxSign=Math.abs(fraction)===1?Math.sign(fraction):0;amplitude=fraction*cap;evaluate();});
     listen($('past-second'),'click',()=>{const end=secondSurfaceEnd(context.data);if(end===null||!usable())return;options.onPause?.();context={...context,position:end};prepare({keepPush:true});options.onSeek?.(end);});
+    for(const where of ['before','at','after'])listen($(where),'click',()=>{
+      const end=focusBookmark(context.data,mode,where);if(end===null||!usable())return;
+      options.onPause?.();context={...context,position:end};prepare({keepPush:true});options.onSeek?.(end);
+    });
     listen(doc,'visibilitychange',()=>{if(doc.hidden){cancel();profiles=[];curves=[];results=[];cap=0;pushLimit=0;maxSign=0;lastNonzeroSafeMagnitude=0;rangePending=false;amplitude=0;refresh();emit();}else if(context.active)prepare();});
     refresh();
     return Object.freeze({setContext(next={}){
@@ -183,5 +203,5 @@
         prepare({keepPush:previous.active&&context.active&&previous.data===context.data&&previous.model===context.model&&!previous.surgery&&!context.surgery});
     },snapshot(){return {active:context.active,mode,T:T(),amplitude,maxAmplitude:cap,pending,rangePending,error,statuses:profiles.map(p=>p.status),eigenvalues:profiles.map(p=>p.eigenvalue)};},destroy(){cancel();destroyed=true;chart.destroy();for(const [node,type,fn]of listeners)node.removeEventListener(type,fn);options.onUpdate?.(null);}});
   }
-  return Object.freeze({create,secondSurfaceEnd,shapeSamples});
+  return Object.freeze({create,secondSurfaceEnd,shapeSamples,surfaceFocus,focusBookmark});
 });

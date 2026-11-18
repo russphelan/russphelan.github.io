@@ -34,7 +34,8 @@
   .workspace summary{min-height:36px;font-size:12px;padding-top:8px;padding-bottom:8px}
 
   .downhill-study-kind button,.downhill-toolbar button,.downhill-toolbar select,
-  .downhill-hidden-directions button,.mode-comparison-toolbar button,.mode-comparison-buttons button{min-height:44px;font-size:12px}
+  .downhill-hidden-directions button,.mode-comparison-toolbar button,.mode-comparison-buttons button,.mode-comparison-bookmarks button{min-height:44px;font-size:12px}
+  .mode-comparison-focus{font-size:11px}
   .downhill-toolbar>label,.downhill-push,.mode-comparison-patterns label{font-size:12px}
   .downhill-toolbar select{max-width:300px}
   .downhill-display-scale select{min-height:40px;font-size:12px}

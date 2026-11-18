@@ -553,9 +553,13 @@ describe second-order behavior; the finite lengths are measured separately.
 **Past second +1** explicitly moves the common endpoint just past the second
 surface focus, stopping before the next event or destination. On the first
 showcase path this exposes two negative surface eigenvalues, while mode 2 has
-one interior sign change and mode 1 has none. Traversal can choose a different
-common segment; changing it resets the push. **Return to focus study** restores
-the Before / At / After controls without moving that endpoint. The green ribbon
+one interior sign change and mode 1 has none. **Before / At focus / After** in
+the comparison move the common endpoint around the selected mode's corresponding
+interior surface focus; the label identifies its mode and distance. Both modes
+are recomputed on that same interval. These shortcuts and traversal retain the
+signed push within the verified common range, including a requested maximum.
+Switching Mode 1 / Mode 2 alone keeps the endpoint fixed. **Return to focus study**
+restores the single-mode controls without moving that endpoint. The green ribbon
 continues to show the Jacobi field. The selectable push patterns solve the
 Hessian eigenvalue equation and are Jacobi fields only at eigenvalue zero.
 

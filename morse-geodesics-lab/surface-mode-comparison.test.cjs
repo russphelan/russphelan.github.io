@@ -8,7 +8,7 @@ function fixture(settings={}){
  doc.defaultView={setTimeout(fn){tasks.set(++serial,fn);return serial;},clearTimeout(id){tasks.delete(id);},
   GeodesicEnergyLandscape:{create(){return {setContext(value){charts.push(value);},destroy(){}};}},
   GeodesicDownhill:{prepare(options){
-   calls.push(options);const {mode,T}=options,lambda=mode*mode-T;
+   calls.push(options);const {mode,T}=options,lambda=settings.eigenvalue?settings.eigenvalue(options):mode*mode-T;
    const status=Math.abs(lambda)<1e-8?'neutral':lambda<0?'downhill':'uphill';
    const length=a=>({length:T+lambda*a*a,baseline:T,delta:lambda*a*a,relativeChange:lambda*a*a/T,error:0,verified:true});
    return {T,type:'surface',mode,eigenvalue:lambda,status,maxAmplitude:settings.cap?settings.cap(options):mode===1?.12:.08,coefficient:s=>s*(T-s)*(mode===1?1:T/2-s),length,
@@ -28,6 +28,79 @@ test('surface endpoint preset passes the second surface focus without crossing t
  const data={length:12,events:[{s:3,surface:true},{s:5,hidden:true},{s:7,surface:true},{s:7.1,hidden:true}]};
  assert.ok(C.secondSurfaceEnd(data)>7);assert.ok(C.secondSurfaceEnd(data)<7.1);
  assert.equal(C.secondSurfaceEnd({length:2,events:[{s:1,surface:true}]}),null);
+});
+test('surface focus shortcuts reuse the focus-study bookmarks and count only interior surface events',()=>{
+ const D=require('./downhill-controls.js'),data={length:10,events:[
+  {s:7.005,hidden:true},{s:0,surface:true},{s:3,surface:true,hidden:true},{s:7,surface:true},
+  {s:6.99,hidden:true},{s:1,hidden:true},{s:8,surface:true,endpoint:true},{s:10,surface:true},
+  {s:NaN,surface:true},{s:-1,surface:true}]};
+ assert.equal(C.surfaceFocus(data,1).s,3);assert.equal(C.surfaceFocus(data,2).s,7);assert.equal(C.surfaceFocus(data,3),null);
+ for(const mode of [1,2])for(const where of ['before','at','after']){
+  const choice=D.eventChoices(data).find(row=>row.type==='surface'&&row.mode===mode);
+  assert.equal(C.focusBookmark(data,mode,where),D.bookmark(choice,where,data.length));
+ }
+ assert.ok(C.focusBookmark(data,2,'before')>6.99);assert.ok(C.focusBookmark(data,2,'after')<7.005);
+ assert.equal(C.focusBookmark(data,2,'at'),7);assert.equal(C.focusBookmark(data,3,'at'),null);
+ assert.equal(C.focusBookmark(null,1,'at'),null);assert.equal(C.focusBookmark(data,1,'invalid'),null);
+ const prepared={...data,interiorEvents:data.events.filter(e=>Number.isFinite(e.s)&&e.s>0&&e.s<data.length&&!e.endpoint)};
+ assert.deepEqual(C.surfaceFocus(prepared,2),C.surfaceFocus(data,2));
+});
+test('before, at and after follow the selected surface mode, keep signed push, and recompute both modes on one segment',()=>{
+ const v=fixture({eigenvalue:({mode,T})=>(mode===1?3:7)-T});v.set();v.flush();v.push(-75);
+ assert.equal(v.nodes['focus-label'].textContent,'Mode 1 · +1 focus at 3.000');
+ for(const [where,T,status]of [['before',2.8,'uphill'],['at',3,'neutral'],['after',3.2,'downhill']]){
+  v.click(where);assert.equal(v.component.snapshot().T,T);assert.equal(v.component.snapshot().mode,1);
+  assert.equal(v.component.snapshot().amplitude,-.06);assert.equal(v.nodes[where].attributes['aria-pressed'],'true');
+  assert.equal(v.emissions.at(-1).result,null,'A new interval cannot show a stale finite length.');v.flush();
+  assert.equal(v.component.snapshot().statuses[0],status);assert.equal(v.component.snapshot().amplitude,-.06);
+  assert.ok(v.calls.slice(-2).every(call=>call.T===T));assert.deepEqual(v.emissions.at(-1).displayProfiles.map(profile=>profile.T),[T,T]);
+ }
+ const seeks=v.seeks.slice();v.click('two');assert.deepEqual(v.seeks,seeks,'Mode selection itself keeps both segment endpoints fixed.');
+ assert.equal(v.nodes['focus-label'].textContent,'Mode 2 · +1 focus at 7.000');
+ for(const [where,T,status]of [['before',6.8,'uphill'],['at',7,'neutral'],['after',7.2,'downhill']]){
+  v.click(where);v.flush();assert.equal(v.component.snapshot().mode,2);assert.equal(v.component.snapshot().T,T);
+  assert.equal(v.component.snapshot().statuses[1],status);assert.equal(v.component.snapshot().statuses[0],'downhill');
+  assert.equal(v.component.snapshot().amplitude,-.06);assert.equal(v.nodes.push.value,-75);
+  assert.equal(v.nodes[where].attributes['aria-pressed'],'true');assert.ok(v.calls.slice(-2).every(call=>call.T===T));
+ }
+ assert.deepEqual(v.seeks,[2.8,3,3.2,6.8,7,7.2]);assert.ok(v.pauses()>=6);v.component.destroy();
+});
+test('focus shortcuts retain signed maximum intent across changes in the verified common range',()=>{
+ for(const sign of [-1,1]){
+  const v=fixture({cap:({T})=>T<3?.02:T===3?.04:.08});v.set();v.flush();v.push(sign*100);
+  for(const [where,expected]of [['before',.02],['at',.04],['after',.08]]){
+   v.click(where);assert.equal(v.nodes.push.value,sign*100);v.flush();
+   assert.equal(v.component.snapshot().amplitude,sign*expected);assert.equal(v.nodes.push.value,sign*100);
+   assert.equal(v.component.snapshot().maxAmplitude,expected);assert.deepEqual(v.emissions.at(-1).result,v.emissions.at(-1).profile.sample(sign*expected));
+  }
+  v.click('two');v.click('at');v.flush();assert.equal(v.component.snapshot().mode,2);assert.equal(v.nodes.push.value,sign*100);
+  v.component.destroy();
+ }
+});
+test('a mode without an interior focus remains selectable while its endpoint shortcuts are disabled',()=>{
+ const v=fixture(),data={length:9,events:[{s:3,surface:true},{s:5,hidden:true},{s:7,surface:true,endpoint:true}]};
+ v.set({data,position:6});v.flush();v.click('two');
+ assert.equal(v.nodes.two.disabled,false);assert.equal(v.component.snapshot().mode,2);
+ assert.equal(v.nodes['focus-label'].textContent,'Mode 2 · no interior +1 focus on this path');
+ const emissions=v.emissions.length,pauses=v.pauses();
+ for(const where of ['before','at','after']){
+  assert.equal(v.nodes[where].disabled,true);assert.equal(v.nodes[where].attributes['aria-pressed'],'false');v.click(where);
+ }
+ assert.equal(v.pauses(),pauses);assert.deepEqual(v.seeks,[]);assert.equal(v.emissions.length,emissions);
+ v.click('one');assert.equal(v.nodes.at.disabled,false);v.click('at');v.flush();assert.equal(v.component.snapshot().T,3);
+ v.set({surgery:true});for(const where of ['before','at','after'])assert.equal(v.nodes[where].disabled,true);
+ v.component.destroy();
+});
+test('closely neighboring conjugate points keep safe endpoints and an unambiguous active shortcut',()=>{
+ const v=fixture(),data={length:10,events:[{s:3,surface:true},{s:6.9999999,hidden:true},{s:7,surface:true},{s:7.0000001,hidden:true}]};
+ v.set({data});v.flush();v.click('two');
+ for(const where of ['before','after','at']){
+  v.click(where);v.flush();const T=v.component.snapshot().T;
+  if(where==='before')assert.ok(T>6.9999999&&T<7);else if(where==='after')assert.ok(T>7&&T<7.0000001);else assert.equal(T,7);
+  assert.equal(v.nodes[where].attributes['aria-pressed'],'true');
+  assert.equal(['before','at','after'].filter(name=>v.nodes[name].attributes['aria-pressed']==='true').length,1);
+ }
+ v.component.destroy();
 });
 test('two actual coefficient patterns share a fixed interval and common physical push, while switching only changes mode',()=>{
  const v=fixture();v.set();assert.equal(v.calls.length,0);assert.equal(v.tasks.size,1);v.flush();
@@ -293,4 +366,21 @@ test('stale shared preparations and lifecycle completions cannot replace the cur
   const count=view.emissions.length;pending[0](nine[0]);pending[1](nine[1]);await settle();
   assert.equal(view.emissions.length,count);assert.equal(view.emissions.at(-1),null);if(action!=='destroy')view.component.destroy();
  }
+});
+
+test('rapid focus shortcuts supersede asynchronous work without changing the selected mode or maximum push',async()=>{
+ const initial=preparedProfiles(9),old=preparedProfiles(2.8),latest=preparedProfiles(7.2),jobs=[];
+ const service={peek:request=>request.T===9?initial[request.mode-1]:null,
+  request(request){return new Promise(resolve=>jobs.push({request,resolve}));}};
+ const v=fixture({preparation:service});v.set();v.push(-100);v.click('before');
+ assert.equal(v.nodes.before.disabled,false,'Shortcuts remain usable while the segment is prepared.');
+ assert.equal(jobs.length,2);assert.ok(jobs.every(job=>job.request.T===2.8));
+ v.click('two');v.click('after');assert.equal(jobs.length,4);assert.ok(jobs.slice(2).every(job=>job.request.T===7.2));
+ const emissions=v.emissions.length;jobs[0].resolve(old[0]);jobs[1].resolve(old[1]);await settle();
+ assert.equal(v.emissions.length,emissions,'Superseded profiles cannot repaint either curve.');
+ jobs[2].resolve(latest[0]);jobs[3].resolve(latest[1]);await settle();
+ const snapshot=v.component.snapshot();assert.equal(snapshot.pending,false);assert.equal(snapshot.mode,2);assert.equal(snapshot.T,7.2);
+ assert.equal(snapshot.amplitude,-.08);assert.equal(v.nodes.push.value,-100);assert.equal(v.nodes.after.attributes['aria-pressed'],'true');
+ assert.equal(v.emissions.at(-1).profile.mode,2);assert.ok(v.emissions.at(-1).displayProfiles.every(profile=>profile.T===7.2));
+ assert.deepEqual(v.seeks,[2.8,7.2]);v.component.destroy();
 });
